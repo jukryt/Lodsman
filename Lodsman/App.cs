@@ -1,13 +1,14 @@
 ﻿using System.Net;
 using System.Reflection;
 using Lodsman.AddressSaver;
+using Lodsman.Log;
 using Lodsman.Network;
 using Lodsman.Shutdown;
 using NetTools;
 
 namespace Lodsman;
 
-internal class App(IConfig config)
+internal class App(IConfig config, ILog log)
 {
     public static string Name => nameof(Lodsman);
     public static Version Version { get; } = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0);
@@ -22,10 +23,10 @@ internal class App(IConfig config)
         config.ProcessNames.ForEach(n => _processNames.Add(n));
         Console.Title = $"{Name} - {string.Join(", ", _processNames)}";
 
-        Console.WriteLine("Init...");
-        using var context = await ContextBuilder.BuildAsync(config);
-        using var shutdownProcessor = new ShutdownProcessor(context.ShutdownAction);
-        var addressSaverProcessor = new AddressSaverProcessor(context.AddressSaverAction, shutdownProcessor.CancellationToken);
+        log.Info("Init...");
+        using var context = await ContextBuilder.BuildAsync(config, log);
+        using var shutdownProcessor = new ShutdownProcessor(context.ShutdownAction, log);
+        var addressSaverProcessor = new AddressSaverProcessor(context.AddressSaverAction, log, shutdownProcessor.CancellationToken);
 
         foreach (var address in context.Addresses)
         {
@@ -39,15 +40,15 @@ internal class App(IConfig config)
             else
                 _domains.Add(address);
 
-            Console.WriteLine($"{address} - loaded");
+            log.Info($"{address} - loaded");
         }
 
         using (var listener = TraceEventListener.Start())
         {
             listener.Connection += (_, e) => ConnectionHandler(e.ProcessName, e.Info, addressSaverProcessor);
-            Console.WriteLine("Ready...");
+            log.Info("Ready...");
             await shutdownProcessor.EndWorkAwaiter;
-            Console.WriteLine("Shutdown...");
+            log.Info("Shutdown...");
         }
 
         return await shutdownProcessor.ExitAppAwaiter;
@@ -72,14 +73,14 @@ internal class App(IConfig config)
             return;
 
         _addresses.Add(address, DateTime.Now);
-        Console.WriteLine($"{address} - added");
+        log.Info($"{address} - added");
 
         var addressesMaxCount = saverProcessor.MaxAddressCount - _domains.Count - _addressesRanges.Count;
         while (_addresses.Count > addressesMaxCount)
         {
             var oldAddress = _addresses.MinBy(x => x.Value).Key;
             _addresses.Remove(oldAddress);
-            Console.WriteLine($"{oldAddress} - remove");
+            log.Info($"{oldAddress} - remove");
         }
 
         var addresses = _domains

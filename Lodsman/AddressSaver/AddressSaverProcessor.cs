@@ -1,6 +1,8 @@
-﻿namespace Lodsman.AddressSaver;
+﻿using Lodsman.Log;
 
-internal class AddressSaverProcessor(IAddressSaverAction action, CancellationToken cancellationToken)
+namespace Lodsman.AddressSaver;
+
+internal class AddressSaverProcessor(IAddressSaverAction action, ILog log, CancellationToken cancellationToken)
 {
     private bool _isRunning = false;
     private ulong _counter = 0;
@@ -38,14 +40,14 @@ internal class AddressSaverProcessor(IAddressSaverAction action, CancellationTok
             await action.SaveAsync(addresses, cancellationToken);
 
             if (Interlocked.Read(ref _counter) == counter)
-                Console.WriteLine("Save complete");
+                log.Info("Save complete");
         }
         catch (OperationCanceledException)
         {
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Save error: {ex.GetType().Name} - {ex.Message}");
+            log.Error(ex);
         }
         finally
         {

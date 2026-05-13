@@ -1,28 +1,31 @@
 ﻿using Lodsman.AddressSaver;
+using Lodsman.Log;
 using Lodsman.Shutdown;
 
 namespace Lodsman.Router.Keenetic;
 
 internal class KeeneticContext : IContext, IAddressSaverAction, IShutdownAction
 {
-    public static async Task<KeeneticContext> BuildAsync(IConfig config)
+    public static async Task<KeeneticContext> BuildAsync(IConfig config, ILog log)
     {
         var keeneticApi = new KeeneticApi(HttpClientHelper.Instance, config.KeenAddress, config.KeenUser, config.KeenPassword);
         var route = await keeneticApi.GetDomainRouteAsync(config.KeenListName);
 
-        return new KeeneticContext(config, keeneticApi, route);
+        return new KeeneticContext(config, keeneticApi, route, log);
     }
 
     private readonly IConfig _config;
+    private readonly ILog _log;
     private readonly KeeneticApi _keeneticApi;
     private readonly DomainRoute _route;
     private readonly CancellationTokenSource _cancellationTokenSource = new ();
 
-    private KeeneticContext(IConfig config, KeeneticApi keeneticApi, DomainRoute route)
+    private KeeneticContext(IConfig config, KeeneticApi keeneticApi, DomainRoute route, ILog log)
     {
         _config = config;
         _keeneticApi = keeneticApi;
         _route = route;
+        _log = log;
 
         AliveKeepingStart(_cancellationTokenSource.Token);
     }
@@ -59,7 +62,7 @@ internal class KeeneticContext : IContext, IAddressSaverAction, IShutdownAction
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Session keeper error: {ex.GetType().Name} - {ex.Message}");
+                _log.Error(ex);
             }
         }
     }

@@ -1,4 +1,5 @@
 ﻿using System.Runtime.InteropServices;
+using Lodsman.Log;
 
 namespace Lodsman.Shutdown;
 
@@ -10,9 +11,11 @@ internal class ShutdownProcessor : IDisposable
     private readonly TaskCompletionSource<int> _exitAppAwaiter;
     private readonly IShutdownAction _action;
 
+    private ILog _log;
+
     private bool _isShutdown = false;
 
-    public ShutdownProcessor(IShutdownAction action)
+    public ShutdownProcessor(IShutdownAction action, ILog log)
     {
         _signalRegistration =
         [
@@ -26,6 +29,7 @@ internal class ShutdownProcessor : IDisposable
         _endWorkAwaiter = new TaskCompletionSource();
         _exitAppAwaiter = new TaskCompletionSource<int>();
         _action = action;
+        _log = log;
     }
 
     public CancellationToken CancellationToken => _cancellationTokenSource.Token;
@@ -50,7 +54,7 @@ internal class ShutdownProcessor : IDisposable
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Shutdown. Error: {ex.GetType().Name} - {ex.Message}");
+            _log.Error(ex);
             _exitAppAwaiter.TrySetResult(ex.HResult);
         }
     }

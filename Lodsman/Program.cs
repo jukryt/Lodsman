@@ -1,5 +1,6 @@
 ﻿using DotMake.CommandLine;
 using Lodsman;
+using Lodsman.Log;
 
 return await Cli.RunAsync<AppRunner>(args, new CliSettings { EnableDefaultExceptionHandler = true });
 
@@ -32,6 +33,7 @@ internal class AppRunner : ICliRunAsyncWithReturn, IConfig
 
     public async Task<int> RunAsync()
     {
-        return await new App(this).RunAsync();
+        var log = new ConsoleLog();
+        return await new App(this, log).RunAsync();
     }
 }
