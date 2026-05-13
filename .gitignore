@@ -46,7 +46,7 @@ $RECYCLE.BIN/
 *.user
 
 # Build results
-[Bb]Build/
+[Bb]uild/
 [Dd]ebug/
 [Rr]elease/
 x64/

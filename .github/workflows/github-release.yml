@@ -1,0 +1,122 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+  workflow_dispatch:
+    inputs:
+      app_major:
+        description: 'Major version'
+        required: true
+        type: string
+      app_minor:
+        description: 'Minor version'
+        required: true
+        type: string
+      app_build:
+        description: 'Build'
+        required: false
+        type: string
+
+run-name: >
+  ${{ github.event_name == 'push'
+    && format('Release {0}', github.ref_name)
+    || inputs.app_build == ''
+      && format('Release {0}.{1}', inputs.app_major, inputs.app_minor)
+      || format('Release {0}.{1}.{2}', inputs.app_major, inputs.app_minor, inputs.app_build) }}
+
+jobs:
+
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    env:
+      app_name: "Lodsman"
+      app_major:
+      app_minor:
+      app_build:
+      app_version:
+      app_folder: "Lodsman"
+      copyright:
+      solution_file: "Lodsman.sln"
+      build_profile: "Release"
+      release_notes:
+      artifact_name:
+      artifact_file_name:
+
+    steps:
+    - name: Install dotnet 10
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Install MSBuild
+      uses: microsoft/setup-msbuild@v3
+
+    - name: Install NuGet
+      uses: NuGet/setup-nuget@v4
+
+    - name: Git checkout
+      uses: actions/checkout@v6
+      with:
+        ref: ${{ github.ref }}
+
+    - name: Set Environment variables
+      shell: powershell
+      run: |
+        dotnet run ./.github/workflows/set-variables.cs -- `
+          -appName "${{ env.app_name }}" `
+          -eventName "${{ github.event_name }}" `
+          -refType "${{ github.ref_type }}" `
+          -refName "${{ github.ref_name }}" `
+          -major "${{ inputs.app_major }}" `
+          -minor "${{ inputs.app_minor }}" `
+          -build "${{ inputs.app_build }}" `
+
+    - name: Restore NuGet Packages
+      run: nuget restore "${{ env.solution_file }}"
+
+    - name: Build Solution
+      run: dotnet publish -p:PublishProfile="${{ env.build_profile }}" -p:Version="${{ env.app_version }}" -p:Copyright="${{ env.copyright }}"
+
+    - name: Build Result
+      shell: powershell
+      run: |
+        $appFolder = "${{ env.app_folder }}"
+        $artifactFileName = "${{ env.artifact_file_name }}"
+        New-Item -Path "_result" -ItemType Directory
+        cd _result
+        New-Item -Path "artifacts" -ItemType Directory
+        New-Item -Path "$appFolder" -ItemType Directory
+        Copy-Item -Path "../Build/Release/*" -Exclude "*.pdb" -Destination "$appFolder/" -Recurse
+        Compress-Archive -Path "$appFolder" -DestinationPath "$artifactFileName"
+        Move-Item -Path "$appFolder" -Destination "artifacts/"
+
+    - name: Create Release
+      uses: ncipollo/release-action@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        name: ${{ env.app_version }}
+        tag: v${{ env.app_version }}
+        body: ${{ env.release_notes }}
+        draft: false
+        prerelease: false
+        generateReleaseNotes: true
+        artifactContentType: "raw"
+        artifacts: _result/${{ env.artifact_file_name }}
+        artifactErrorsFailBuild: true
+        replacesArtifacts: true
+        allowUpdates: true
+        omitNameDuringUpdate: true
+        omitBodyDuringUpdate: true
+        omitDraftDuringUpdate: true
+
+    - name: Publish artifact
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ env.artifact_name }}
+        path: _result/artifacts
