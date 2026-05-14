@@ -1,14 +1,14 @@
 ﻿using System.Net;
 using System.Reflection;
 using Lodsman.AddressSaver;
-using Lodsman.Log;
+using Lodsman.Context;
 using Lodsman.Network;
 using Lodsman.Shutdown;
 using NetTools;
 
 namespace Lodsman;
 
-internal class App(IContext context, IAddressSaverProcessor addressSaverProcessor, IShutdownProcessor shutdownProcessor, ILog log)
+internal class App(IContext context, IAddressSaverProcessor addressSaverProcessor, IShutdownProcessor shutdownProcessor)
 {
     public static string Name => nameof(Lodsman);
     public static Version Version { get; } = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0);
@@ -22,7 +22,7 @@ internal class App(IContext context, IAddressSaverProcessor addressSaverProcesso
     {
         //System.Diagnostics.Debugger.Launch();
 
-        log.Info("Init...");
+        context.Log.Info("Init...");
 
         foreach (var processName in context.ProcessNames)
             _processNames.Add(processName);
@@ -39,15 +39,15 @@ internal class App(IContext context, IAddressSaverProcessor addressSaverProcesso
             else
                 _domains.Add(address);
 
-            log.Info($"{address} - loaded");
+            context.Log.Info($"{address} - loaded");
         }
 
         using (var listener = TraceEventListener.Start())
         {
             listener.Connection += ConnectionHandler;
-            log.Info("Ready...");
+            context.Log.Info("Ready...");
             await shutdownProcessor.EndWorkAwaiter;
-            log.Info("Shutdown...");
+            context.Log.Info("Shutdown...");
         }
 
         return await shutdownProcessor.ExitAppAwaiter;
@@ -72,14 +72,14 @@ internal class App(IContext context, IAddressSaverProcessor addressSaverProcesso
             return;
 
         _addresses.Add(address, DateTime.Now);
-        log.Info($"{address} - added");
+        context.Log.Info($"{address} - added");
 
         var addressesMaxCount = addressSaverProcessor.MaxAddressCount - _domains.Count - _addressesRanges.Count;
         while (_addresses.Count > addressesMaxCount)
         {
             var oldAddress = _addresses.MinBy(x => x.Value).Key;
             _addresses.Remove(oldAddress);
-            log.Info($"{oldAddress} - remove");
+            context.Log.Info($"{oldAddress} - remove");
         }
 
         var addresses = _domains

@@ -1,40 +1,36 @@
 ﻿using Lodsman.AddressSaver;
-using Lodsman.Log;
 using Lodsman.Shutdown;
 
-namespace Lodsman.Router.Keenetic;
+namespace Lodsman.Context.Router.Keenetic;
 
-internal class KeeneticContext : IContext, IAddressSaverAction, IShutdownAction
+internal class KeeneticContext : BaseContext, IAddressSaverAction, IShutdownAction
 {
-    public static async Task<KeeneticContext> BuildAsync(IConfig config, ILog log)
+    public static async Task<KeeneticContext> BuildAsync(IKeeneticConfig config)
     {
-        var keeneticApi = new KeeneticApi(HttpClientHelper.Instance, config.KeenAddress, config.KeenUser, config.KeenPassword);
-        var route = await keeneticApi.GetDomainRouteAsync(config.KeenListName);
+        var keeneticApi = new KeeneticApi(HttpClientHelper.Instance, config.Address, config.User, config.Password);
+        var route = await keeneticApi.GetDomainRouteAsync(config.ListName);
 
-        return new KeeneticContext(config, keeneticApi, route, log);
+        return new KeeneticContext(config, keeneticApi, route);
     }
 
     private readonly IConfig _config;
-    private readonly ILog _log;
     private readonly KeeneticApi _keeneticApi;
     private readonly DomainRoute _route;
     private readonly CancellationTokenSource _cancellationTokenSource = new ();
 
-    private KeeneticContext(IConfig config, KeeneticApi keeneticApi, DomainRoute route, ILog log)
+    private KeeneticContext(IKeeneticConfig config, KeeneticApi keeneticApi, DomainRoute route) : base(config)
     {
         _config = config;
         _keeneticApi = keeneticApi;
         _route = route;
-        _log = log;
 
         AliveKeepingStart(_cancellationTokenSource.Token);
     }
 
     public int MaxAddressCount => KeeneticApi.MaxDomainRoutes;
-    public IReadOnlyCollection<string> ProcessNames => _config.ProcessNames;
-    public IReadOnlyCollection<string> Addresses => _route.Addresses.ToList();
-    public IAddressSaverAction AddressSaverAction => this;
-    public IShutdownAction ShutdownAction => this;
+    public override IReadOnlyCollection<string> Addresses => _route.Addresses.ToList();
+    public override IAddressSaverAction AddressSaverAction => this;
+    public override IShutdownAction ShutdownAction => this;
 
     private async Task SaveAsync(IReadOnlyCollection<string> addresses, CancellationToken cancellationToken)
     {
@@ -55,7 +51,6 @@ internal class KeeneticContext : IContext, IAddressSaverAction, IShutdownAction
     private async void AliveKeepingStart(CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
-        {
             try
             {
                 await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken);
@@ -63,16 +58,16 @@ internal class KeeneticContext : IContext, IAddressSaverAction, IShutdownAction
             }
             catch (Exception ex)
             {
-                _log.Error(ex);
+                Log.Error(ex);
             }
-        }
     }
 
     Task IAddressSaverAction.SaveAsync(IReadOnlyCollection<string> addresses, CancellationToken cancellationToken) => SaveAsync(addresses, cancellationToken);
     Task IShutdownAction.ShutdownAsync() => ShutdownAsync();
 
-    public void Dispose()
+    public override void Dispose()
     {
         _cancellationTokenSource.Dispose();
+        base.Dispose();
     }
 }

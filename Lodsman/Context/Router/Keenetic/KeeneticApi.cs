@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
 
-namespace Lodsman.Router.Keenetic;
+namespace Lodsman.Context.Router.Keenetic;
 
 internal class KeeneticApi
 {

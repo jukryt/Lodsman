@@ -1,4 +1,4 @@
-﻿namespace Lodsman.Router.Keenetic;
+﻿namespace Lodsman.Context.Router.Keenetic;
 
 internal record DomainRoute
 {
