@@ -31,6 +31,7 @@ internal class KeeneticContext : IContext, IAddressSaverAction, IShutdownAction
     }
 
     public int MaxAddressCount => KeeneticApi.MaxDomainRoutes;
+    public IReadOnlyCollection<string> ProcessNames => _config.ProcessNames;
     public IReadOnlyCollection<string> Addresses => _route.Addresses.ToList();
     public IAddressSaverAction AddressSaverAction => this;
     public IShutdownAction ShutdownAction => this;

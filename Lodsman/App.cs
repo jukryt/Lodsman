@@ -8,7 +8,7 @@ using NetTools;
 
 namespace Lodsman;
 
-internal class App(IConfig config, ILog log)
+internal class App(IContext context, IAddressSaverProcessor addressSaverProcessor, IShutdownProcessor shutdownProcessor, ILog log)
 {
     public static string Name => nameof(Lodsman);
     public static Version Version { get; } = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0);
@@ -20,13 +20,12 @@ internal class App(IConfig config, ILog log)
 
     public async Task<int> RunAsync()
     {
-        config.ProcessNames.ForEach(n => _processNames.Add(n));
-        Console.Title = $"{Name} - {string.Join(", ", _processNames)}";
+        //System.Diagnostics.Debugger.Launch();
 
         log.Info("Init...");
-        using var context = await ContextBuilder.BuildAsync(config, log);
-        using var shutdownProcessor = new PosixShutdownProcessor(context.ShutdownAction, log);
-        var addressSaverProcessor = new AddressSaverProcessor(context.AddressSaverAction, log, shutdownProcessor.CancellationToken);
+
+        foreach (var processName in context.ProcessNames)
+            _processNames.Add(processName);
 
         foreach (var address in context.Addresses)
         {
@@ -45,7 +44,7 @@ internal class App(IConfig config, ILog log)
 
         using (var listener = TraceEventListener.Start())
         {
-            listener.Connection += (s, e) => ConnectionHandler(s, e, addressSaverProcessor);
+            listener.Connection += ConnectionHandler;
             log.Info("Ready...");
             await shutdownProcessor.EndWorkAwaiter;
             log.Info("Shutdown...");
@@ -54,7 +53,7 @@ internal class App(IConfig config, ILog log)
         return await shutdownProcessor.ExitAppAwaiter;
     }
 
-    private void ConnectionHandler(object? sender, ConnectionEventArgs e, AddressSaverProcessor addressSaverProcessor)
+    private void ConnectionHandler(object? sender, ConnectionEventArgs e)
     {
         if (string.IsNullOrEmpty(e.ProcessName) ||
             !_processNames.Contains(e.ProcessName))

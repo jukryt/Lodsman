@@ -12,6 +12,7 @@
     <PackageReference Include="DotMake.CommandLine" Version="3.2.0" />
     <PackageReference Include="IPAddressRange" Version="6.3.0" />
     <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="3.2.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.8" />
   </ItemGroup>
 
 </Project>
