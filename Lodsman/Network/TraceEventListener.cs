@@ -1,10 +1,11 @@
-﻿using Microsoft.Diagnostics.Tracing.Parsers;
+﻿using System.Net;
+using Microsoft.Diagnostics.Tracing.Parsers;
 using Microsoft.Diagnostics.Tracing.Parsers.Kernel;
 using Microsoft.Diagnostics.Tracing.Session;
 
 namespace Lodsman.Network;
 
-internal class TraceEventListener : IDisposable
+internal class TraceEventListener : INetworkListener
 {
     public static TraceEventListener Start()
     {
@@ -35,54 +36,22 @@ internal class TraceEventListener : IDisposable
 
     private void TcpIpv4Send(TcpIpSendTraceData data)
     {
-        var info = new ConnectionInfo
-        {
-            SourceIp = data.saddr,
-            SourcePort = data.sport,
-            TargetIp = data.daddr,
-            TargetPort = data.dport,
-        };
-
-        OnConnection(data.ProcessID, data.ProcessName, info);
+        OnConnection(data.ProcessName, data.daddr);
     }
 
     private void TcpIpv6Send(TcpIpV6SendTraceData data)
     {
-        var info = new ConnectionInfo
-        {
-            SourceIp = data.saddr,
-            SourcePort = data.sport,
-            TargetIp = data.daddr,
-            TargetPort = data.dport,
-        };
-
-        OnConnection(data.ProcessID, data.ProcessName, info);
+        OnConnection(data.ProcessName, data.daddr);
     }
 
     private void UdpIpv4Send(UdpIpTraceData data)
     {
-        var info = new ConnectionInfo
-        {
-            SourceIp = data.saddr,
-            SourcePort = data.sport,
-            TargetIp = data.daddr,
-            TargetPort = data.dport,
-        };
-
-        OnConnection(data.ProcessID, data.ProcessName, info);
+        OnConnection(data.ProcessName, data.daddr);
     }
 
     private void UdpIpv6Send(UpdIpV6TraceData data)
     {
-        var info = new ConnectionInfo
-        {
-            SourceIp = data.saddr,
-            SourcePort = data.sport,
-            TargetIp = data.daddr,
-            TargetPort = data.dport,
-        };
-
-        OnConnection(data.ProcessID, data.ProcessName, info);
+        OnConnection(data.ProcessName, data.daddr);
     }
 
     public void Dispose()
@@ -91,15 +60,8 @@ internal class TraceEventListener : IDisposable
         _session.Dispose();
     }
 
-    protected virtual void OnConnection(int processId, string processName, ConnectionInfo info)
+    protected virtual void OnConnection(string processName, IPAddress targetIp)
     {
-        Connection?.Invoke(this, new ConnectionEventArgs(processId, processName, info));
+        Connection?.Invoke(this, new ConnectionEventArgs(processName, targetIp));
     }
-}
-
-internal class ConnectionEventArgs(int processId, string processName, ConnectionInfo info) : EventArgs
-{
-    public int ProcessId { get; } = processId;
-    public string ProcessName { get; } = processName;
-    public ConnectionInfo Info { get; } = info;
 }

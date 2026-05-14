@@ -2,7 +2,7 @@
 
 namespace Lodsman.AddressSaver;
 
-internal class AddressSaverProcessor(IAddressSaverAction action, ILog log, CancellationToken cancellationToken)
+internal class AddressSaverProcessor(IAddressSaverAction action, ILog log, CancellationToken cancellationToken) : IAddressSaverProcessor
 {
     private bool _isRunning = false;
     private ulong _counter = 0;

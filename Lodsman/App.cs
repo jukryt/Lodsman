@@ -25,7 +25,7 @@ internal class App(IConfig config, ILog log)
 
         log.Info("Init...");
         using var context = await ContextBuilder.BuildAsync(config, log);
-        using var shutdownProcessor = new ShutdownProcessor(context.ShutdownAction, log);
+        using var shutdownProcessor = new PosixShutdownProcessor(context.ShutdownAction, log);
         var addressSaverProcessor = new AddressSaverProcessor(context.AddressSaverAction, log, shutdownProcessor.CancellationToken);
 
         foreach (var address in context.Addresses)
@@ -45,7 +45,7 @@ internal class App(IConfig config, ILog log)
 
         using (var listener = TraceEventListener.Start())
         {
-            listener.Connection += (_, e) => ConnectionHandler(e.ProcessName, e.Info, addressSaverProcessor);
+            listener.Connection += (s, e) => ConnectionHandler(s, e, addressSaverProcessor);
             log.Info("Ready...");
             await shutdownProcessor.EndWorkAwaiter;
             log.Info("Shutdown...");
@@ -54,13 +54,13 @@ internal class App(IConfig config, ILog log)
         return await shutdownProcessor.ExitAppAwaiter;
     }
 
-    private void ConnectionHandler(string processName, ConnectionInfo info, AddressSaverProcessor saverProcessor)
+    private void ConnectionHandler(object? sender, ConnectionEventArgs e, AddressSaverProcessor addressSaverProcessor)
     {
-        if (string.IsNullOrEmpty(processName) ||
-            !_processNames.Contains(processName))
+        if (string.IsNullOrEmpty(e.ProcessName) ||
+            !_processNames.Contains(e.ProcessName))
             return;
 
-        var targetIp = info.TargetIp;
+        var targetIp = e.TargetIp;
 
         if (IPAddress.IsLoopback(targetIp))
             return;
@@ -75,7 +75,7 @@ internal class App(IConfig config, ILog log)
         _addresses.Add(address, DateTime.Now);
         log.Info($"{address} - added");
 
-        var addressesMaxCount = saverProcessor.MaxAddressCount - _domains.Count - _addressesRanges.Count;
+        var addressesMaxCount = addressSaverProcessor.MaxAddressCount - _domains.Count - _addressesRanges.Count;
         while (_addresses.Count > addressesMaxCount)
         {
             var oldAddress = _addresses.MinBy(x => x.Value).Key;
@@ -88,6 +88,6 @@ internal class App(IConfig config, ILog log)
             .Union(_addresses.Keys.Order())
             .ToList();
 
-        saverProcessor.Save(addresses);
+        addressSaverProcessor.Save(addresses);
     }
 }
