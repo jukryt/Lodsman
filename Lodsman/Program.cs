@@ -12,23 +12,24 @@ return await Cli.RunAsync<AppRunner>(args, new CliSettings { EnableDefaultExcept
 internal class AppRunner : ICliRunAsyncWithReturn, IConfig
 {
     [CliOption(Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "Keenetic address")]
+    [CliOption(Alias = "-ka", Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "Keenetic address")]
     public required string KeenAddress { get; set; }
 
-    [CliOption(Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "Keenetic user name")]
+    [CliOption(Alias = "-ku", Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "Keenetic user name")]
     public required string KeenUser { get; set; }
 
-    [CliOption(Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "Keenetic password")]
+    [CliOption(Alias = "-kp", Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "Keenetic password")]
     public required string KeenPassword { get; set; }
 
-    [CliOption(Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "Keenetic route list name")]
+    [CliOption(Alias = "-kln", Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "Keenetic route list name")]
     public required string KeenListName { get; set; }
 
-    [CliOption(Required = true, Arity = CliArgumentArity.OneOrMore, HelpName = "Process name")]
+    [CliOption(Alias = "-pn", Required = true, Arity = CliArgumentArity.OneOrMore, HelpName = "Process name")]
     public required List<string> ProcessName { get; set; }
 
     public List<string> ProcessNames => ProcessName;
 
-    [CliOption(Required = false, Arity = CliArgumentArity.ZeroOrOne)]
+    [CliOption(Alias = "-cbe", Required = false, Arity = CliArgumentArity.ZeroOrOne)]
     public required bool ClearBeforeExit { get; set; } = false;
 
     public async Task<int> RunAsync()
