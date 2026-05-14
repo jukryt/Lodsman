@@ -16,7 +16,12 @@ return await Cli.RunAsync<AppRunner>(args, new CliSettings { EnableDefaultExcept
     TreatUnmatchedTokensAsErrors = false)]
 internal class AppRunner : ICliRunAsyncWithReturn, IConfig
 {
-    [CliOption(Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "Keenetic address")]
+    [CliOption(Alias = "-is", Required = false, Arity = CliArgumentArity.ZeroOrOne)]
+    public required bool InstallService { get; set; } = false;
+
+    [CliOption(Alias = "-us", Required = false, Arity = CliArgumentArity.ZeroOrOne)]
+    public required bool UninstallService { get; set; } = false;
+
     [CliOption(Alias = "-ka", Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "Keenetic address")]
     public required string KeenAddress { get; set; }
 
@@ -42,9 +47,46 @@ internal class AppRunner : ICliRunAsyncWithReturn, IConfig
         var processNames = ProcessNames.ToHashSet(StringComparer.OrdinalIgnoreCase);
         var name = $"{App.Name} - {string.Join(", ", processNames)}";
 
+        if (InstallService)
+            return InstallServiceAsync(name);
+
+        if (UninstallService)
+            return UninstallServiceAsync(name);
+
         return WindowsServiceHelpers.IsWindowsService()
             ? RunAsServiceAsync(name)
             : RunAsConsoleAsync(name);
+    }
+
+    private async Task<int> InstallServiceAsync(string serviceName)
+    {
+        var servicePath = Environment.ProcessPath ?? Assembly.GetExecutingAssembly().Location;
+        var serviceArguments = new List<string>
+        {
+            $"-ka \\\"{KeenAddress}\\\"",
+            $"-ku \\\"{KeenUser}\\\"",
+            $"-kp \\\"{KeenPassword}\\\"",
+            $"-kln \\\"{KeenListName}\\\"",
+        };
+
+        foreach (var processName in ProcessNames)
+            serviceArguments.Add($"-pn \\\"{processName}\\\"");
+
+        if (ClearBeforeExit)
+            serviceArguments.Add("-cbe");
+
+        var log = new ConsoleLog();
+        var arguments = $"/c sc create \"{serviceName}\" binPath= \"\\\"{servicePath}\\\" {string.Join(" ", serviceArguments)}\" start= auto && sc start \"{serviceName}\"";
+        return await ProcessHelper.ExecuteAsync("cmd", arguments, log);
+    }
+
+    private async Task<int> UninstallServiceAsync(string serviceName)
+    {
+        var log = new ConsoleLog();
+        var stopArguments = $"/c sc stop \"{serviceName}\"";
+        await ProcessHelper.ExecuteAsync("cmd", stopArguments, log);
+        var deleteArguments = $"/c sc delete \"{serviceName}\"";
+        return await ProcessHelper.ExecuteAsync("cmd", deleteArguments, log);
     }
 
     private async Task<int> RunAsServiceAsync(string serviceName)
