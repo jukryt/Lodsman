@@ -3,7 +3,7 @@ using Lodsman.Context.Router.Keenetic;
 
 namespace Lodsman.CliRunner;
 
-[CliCommand(Name = "/keenetic", Alias = "/k", Description = "Router Keenetic",
+[CliCommand(Name = "/keenetic", Alias = "/keen", Description = "Router Keenetic",
     Parent = typeof(RootCommand),
     NamePrefixConvention = CliNamePrefixConvention.DoubleHyphen,
     ShortFormPrefixConvention = CliNamePrefixConvention.SingleHyphen,
