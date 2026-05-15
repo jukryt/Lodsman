@@ -9,8 +9,8 @@ internal abstract class BaseContext : IContext
 
     protected BaseContext(IConfig config)
     {
-        Log = CreateLog();
         _config = config;
+        Log = CreateLog();
     }
 
     public string ServiceName => $"{App.Name} - {string.Join(", ", ProcessNames.Order().ToHashSet(StringComparer.OrdinalIgnoreCase))}";

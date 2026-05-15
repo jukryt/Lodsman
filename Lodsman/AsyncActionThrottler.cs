@@ -1,56 +1,55 @@
 ﻿using Lodsman.Log;
 
-namespace Lodsman
+namespace Lodsman;
+
+internal class AsyncActionThrottler<T>(Func<T, CancellationToken, Task> action, Action? actionComplete = null, ILog? log = null)
 {
-    internal class AsyncActionThrottler<T>(Func<T, CancellationToken, Task> action, Action actionComplete, ILog log)
+    private bool _isRunning = false;
+    private ulong _counter = 0;
+
+    public void Run(T data, CancellationToken cancellationToken = default)
     {
-        private bool _isRunning = false;
-        private ulong _counter = 0;
+        if (cancellationToken.IsCancellationRequested)
+            return;
 
-        public void Run(T data, CancellationToken cancellationToken)
+        RunAsync(data, Interlocked.Increment(ref _counter), cancellationToken);
+    }
+
+    private async void RunAsync(T data, ulong counter, CancellationToken cancellationToken)
+    {
+        try
         {
-            if (cancellationToken.IsCancellationRequested)
-                return;
+            do
+            {
+                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
 
-            RunAsync(data, Interlocked.Increment(ref _counter), cancellationToken);
+                if (Interlocked.Read(ref _counter) != counter)
+                    return;
+
+            } while (Interlocked.CompareExchange(ref _isRunning, true, false));
+        }
+        catch (OperationCanceledException)
+        {
+            return;
         }
 
-        private async void RunAsync(T data, ulong counter, CancellationToken cancellationToken)
+        try
         {
-            try
-            {
-                do
-                {
-                    await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+            await action(data, cancellationToken);
 
-                    if (Interlocked.Read(ref _counter) != counter)
-                        return;
-
-                } while (Interlocked.CompareExchange(ref _isRunning, true, false));
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-
-            try
-            {
-                await action(data, cancellationToken);
-
-                if (Interlocked.Read(ref _counter) == counter)
-                    actionComplete();
-            }
-            catch (OperationCanceledException)
-            {
-            }
-            catch (Exception ex)
-            {
-                log.Error(ex);
-            }
-            finally
-            {
-                Interlocked.Exchange(ref _isRunning, false);
-            }
+            if (Interlocked.Read(ref _counter) == counter)
+                actionComplete?.Invoke();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            log?.Error(ex);
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _isRunning, false);
         }
     }
 }
