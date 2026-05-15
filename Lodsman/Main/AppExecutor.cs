@@ -1,6 +1,6 @@
 ﻿using Lodsman.Context;
 
-namespace Lodsman.CliRunner;
+namespace Lodsman.Main;
 
 internal class AppExecutor(IContext context)
 {

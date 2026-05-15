@@ -1,4 +1,6 @@
-﻿namespace Lodsman;
+﻿using Lodsman.Main;
+
+namespace Lodsman;
 
 internal static class FileSystemHelper
 {

@@ -5,7 +5,7 @@ using Lodsman.Extension;
 using Lodsman.Network;
 using NetTools;
 
-namespace Lodsman;
+namespace Lodsman.Main;
 
 internal class App
 {

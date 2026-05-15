@@ -1,8 +1,7 @@
 ﻿using System.Reflection;
 using DotMake.CommandLine;
 using Lodsman.Context;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
+using Lodsman.Main;
 using Microsoft.Extensions.Hosting.WindowsServices;
 
 namespace Lodsman.CliRunner;
@@ -67,21 +66,12 @@ internal abstract class BaseCommand : RootCommand, IConfig
 
     private async Task<int> RunAsServiceAsync(IContext context)
     {
-        var builder = Host.CreateApplicationBuilder();
-        builder.Services.Configure<HostOptions>(options =>
-        {
-            options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.StopHost;
-        });
-        builder.Services.AddWindowsService(o => o.ServiceName = context.ServiceName);
-        builder.Services.AddHostedService(_ => new ServiceWorker(new AppExecutor(context)));
-        var host = builder.Build();
-        await host.RunAsync();
+        await ServiceWorker.RunAsync(context);
         return 0;
     }
 
     private async Task<int> RunAsConsoleAsync(IContext context)
     {
-        Console.Title = context.ServiceName;
-        return await new ConsoleWorker(new AppExecutor(context)).ExecuteAsync();
+        return await ConsoleWorker.RunAsync(context);
     }
 }

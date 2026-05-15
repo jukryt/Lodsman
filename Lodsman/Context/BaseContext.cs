@@ -1,4 +1,5 @@
 ﻿using Lodsman.Log;
+using Lodsman.Main;
 using Microsoft.Extensions.Hosting.WindowsServices;
 
 namespace Lodsman.Context;
