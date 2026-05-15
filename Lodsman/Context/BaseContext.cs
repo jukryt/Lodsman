@@ -2,41 +2,39 @@
 using Lodsman.Log;
 using Microsoft.Extensions.Hosting.WindowsServices;
 
-namespace Lodsman.Context
+namespace Lodsman.Context;
+
+internal abstract class BaseContext : IContext
 {
-    internal abstract class BaseContext : IContext
+    private readonly IConfig _config;
+
+    protected BaseContext(IConfig config)
     {
-        private readonly IConfig _config;
+        _config = config;
+        Log = CreateLog();
+    }
 
-        protected BaseContext(IConfig config)
+    public string ServiceName => $"{App.Name} - {string.Join(", ", ProcessNames.Order().ToHashSet(StringComparer.OrdinalIgnoreCase))}";
+    public IReadOnlyCollection<string> ProcessNames => _config.ProcessNames;
+    public abstract IReadOnlyCollection<string> Addresses { get; }
+    public abstract IAddressSaverAction AddressSaverAction { get; }
+    public ILog Log { get; }
+
+    public abstract Task ShutdownAsync();
+
+    private ILog CreateLog()
+    {
+        if (WindowsServiceHelpers.IsWindowsService())
         {
-            _config = config;
-            Log = CreateLog();
+            var logFileName = $"{string.Join("_", ServiceName.Split(Path.GetInvalidFileNameChars()))}.log";
+            var logFilePath = Path.Combine(FileSystemHelper.GetAppDataFolder(), logFileName);
+            return new FileLog(logFilePath);
         }
 
-        public string ServiceName => $"{App.Name} - {string.Join(", ", ProcessNames.Order().ToHashSet(StringComparer.OrdinalIgnoreCase))}";
-        public IReadOnlyCollection<string> ProcessNames => _config.ProcessNames;
-        public abstract IReadOnlyCollection<string> Addresses { get; }
-        public abstract IAddressSaverAction AddressSaverAction { get; }
-        public ILog Log { get; }
+        return new ConsoleLog();
+    }
 
-        public abstract Task ShutdownAsync();
-
-        private ILog CreateLog()
-        {
-            if (WindowsServiceHelpers.IsWindowsService())
-            {
-                var programDataFolder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-                var logFileName = $"{string.Join("_", ServiceName.Split(Path.GetInvalidFileNameChars()))}.log";
-                var logFilePath = Path.Combine(programDataFolder, App.Name, logFileName);
-                return new FileLog(logFilePath);
-            }
-
-            return new ConsoleLog();
-        }
-
-        public virtual void Dispose()
-        {
-        }
+    public virtual void Dispose()
+    {
     }
 }

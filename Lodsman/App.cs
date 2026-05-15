@@ -18,7 +18,7 @@ internal class App(IContext context, IAddressSaverProcessor addressSaverProcesso
     private readonly Dictionary<string, IPAddressRange> _addressesRanges = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, DateTime> _addresses = new(StringComparer.OrdinalIgnoreCase);
 
-    public async Task<int> RunAsync(CancellationToken cancellationToken)
+    public async Task RunAsync(CancellationToken cancellationToken)
     {
         //System.Diagnostics.Debugger.Launch();
 
@@ -48,8 +48,6 @@ internal class App(IContext context, IAddressSaverProcessor addressSaverProcesso
         context.Log.Info("Ready...");
         await TaskExtension.AwaitTokenAsync(cancellationToken);
         context.Log.Info("Shutdown...");
-
-        return 0;
     }
 
     private void ConnectionHandler(object? sender, ConnectionEventArgs e)
