@@ -43,7 +43,7 @@ internal class ConsoleWorker
         if (Interlocked.CompareExchange(ref _isShutdown, true, false))
             return;
 
-        _cancellationTokenSource.Cancel();
+        _cancellationTokenSource.CancelAsync();
         _endWorkEvent.Wait();
     }
 }
