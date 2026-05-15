@@ -9,12 +9,14 @@ internal class ServiceWorker : BackgroundService
     public static async Task RunAsync(IContext context)
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.Configure<HostOptions>(options =>
-        {
-            options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.StopHost;
+        builder.Services.Configure<HostOptions>(o => {
+            o.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.StopHost;
+            o.StartupTimeout = TimeSpan.FromSeconds(30);
+            o.ShutdownTimeout = TimeSpan.FromSeconds(30);
         });
         builder.Services.AddWindowsService(o => o.ServiceName = context.ServiceName);
         builder.Services.AddHostedService(_ => new ServiceWorker(new AppExecutor(context)));
+
         var host = builder.Build();
         await host.RunAsync();
     }
