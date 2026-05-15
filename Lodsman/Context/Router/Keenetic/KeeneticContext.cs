@@ -1,8 +1,6 @@
-﻿using Lodsman.AddressSaver;
+﻿namespace Lodsman.Context.Router.Keenetic;
 
-namespace Lodsman.Context.Router.Keenetic;
-
-internal class KeeneticContext : BaseContext, IAddressSaverAction
+internal class KeeneticContext : BaseContext
 {
     public static async Task<KeeneticContext> BuildAsync(IKeeneticConfig config)
     {
@@ -12,10 +10,10 @@ internal class KeeneticContext : BaseContext, IAddressSaverAction
         return new KeeneticContext(config, keeneticApi, route);
     }
 
-    private readonly IConfig _config;
+    private readonly IKeeneticConfig _config;
     private readonly KeeneticApi _keeneticApi;
     private readonly DomainRoute _route;
-    private readonly CancellationTokenSource _cancellationTokenSource = new ();
+    private readonly CancellationTokenSource _cancellationTokenSource = new();
 
     private KeeneticContext(IKeeneticConfig config, KeeneticApi keeneticApi, DomainRoute route) : base(config)
     {
@@ -26,11 +24,10 @@ internal class KeeneticContext : BaseContext, IAddressSaverAction
         AliveKeepingStart(_cancellationTokenSource.Token);
     }
 
-    public int MaxAddressCount => KeeneticApi.MaxDomainRoutes;
+    public override int MaxAddressCount => KeeneticApi.MaxDomainRoutes;
     public override IReadOnlyCollection<string> Addresses => _route.Addresses.ToList();
-    public override IAddressSaverAction AddressSaverAction => this;
 
-    private async Task SaveAsync(IReadOnlyCollection<string> addresses, CancellationToken cancellationToken)
+    public override async Task SaveAsync(IReadOnlyCollection<string> addresses, CancellationToken cancellationToken)
     {
         _route.Addresses.Clear();
         _route.Addresses.AddRange(addresses);
@@ -65,8 +62,6 @@ internal class KeeneticContext : BaseContext, IAddressSaverAction
             }
         }
     }
-
-    Task IAddressSaverAction.SaveAsync(IReadOnlyCollection<string> addresses, CancellationToken cancellationToken) => SaveAsync(addresses, cancellationToken);
 
     public override void Dispose()
     {

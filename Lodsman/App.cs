@@ -1,6 +1,5 @@
 ﻿using System.Net;
 using System.Reflection;
-using Lodsman.AddressSaver;
 using Lodsman.Context;
 using Lodsman.Extension;
 using Lodsman.Network;
@@ -8,26 +7,34 @@ using NetTools;
 
 namespace Lodsman;
 
-internal class App(IContext context, IAddressSaverProcessor addressSaverProcessor)
+internal class App
 {
     public static string Name => nameof(Lodsman);
     public static Version Version { get; } = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0);
 
+    private readonly IContext _context;
     private readonly HashSet<string> _processNames = new (StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _domains = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, IPAddressRange> _addressesRanges = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, DateTime> _addresses = new(StringComparer.OrdinalIgnoreCase);
+    private readonly AsyncActionThrottler<IReadOnlyCollection<string>> _saveThrottler;
+
+    public App(IContext context)
+    {
+        _context = context;
+        _saveThrottler = new AsyncActionThrottler<IReadOnlyCollection<string>>(_context.SaveAsync, SaveComplete, context.Log);
+
+        foreach (var processName in _context.ProcessNames)
+            _processNames.Add(processName);
+    }
 
     public async Task RunAsync(CancellationToken cancellationToken)
     {
         //System.Diagnostics.Debugger.Launch();
 
-        context.Log.Info("Init...");
+        _context.Log.Info("Init...");
 
-        foreach (var processName in context.ProcessNames)
-            _processNames.Add(processName);
-
-        foreach (var address in context.Addresses)
+        foreach (var address in _context.Addresses)
         {
             if (IPAddressRange.TryParse(address, out var ipAddressRange))
             {
@@ -39,24 +46,27 @@ internal class App(IContext context, IAddressSaverProcessor addressSaverProcesso
             else
                 _domains.Add(address);
 
-            context.Log.Info($"{address} - loaded");
+            _context.Log.Info($"{address} - loaded");
         }
 
         using var listener = TraceEventListener.Start();
-        listener.Connection += ConnectionHandler;
+        listener.Connection += (_, e) => ConnectionHandler(e.ProcessName, e.TargetIp, cancellationToken);
 
-        context.Log.Info("Ready...");
+        _context.Log.Info("Ready...");
         await TaskExtension.AwaitTokenAsync(cancellationToken);
-        context.Log.Info("Shutdown...");
+        _context.Log.Info("Shutdown...");
     }
 
-    private void ConnectionHandler(object? sender, ConnectionEventArgs e)
+    public async Task ShutdownAsync()
     {
-        if (string.IsNullOrEmpty(e.ProcessName) ||
-            !_processNames.Contains(e.ProcessName))
-            return;
+        await _context.ShutdownAsync();
+    }
 
-        var targetIp = e.TargetIp;
+    private void ConnectionHandler(string processName, IPAddress targetIp, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(processName) ||
+            !_processNames.Contains(processName))
+            return;
 
         if (IPAddress.IsLoopback(targetIp))
             return;
@@ -69,14 +79,14 @@ internal class App(IContext context, IAddressSaverProcessor addressSaverProcesso
             return;
 
         _addresses.Add(address, DateTime.Now);
-        context.Log.Info($"{address} - added");
+        _context.Log.Info($"{address} - added");
 
-        var addressesMaxCount = addressSaverProcessor.MaxAddressCount - _domains.Count - _addressesRanges.Count;
+        var addressesMaxCount = _context.MaxAddressCount - _domains.Count - _addressesRanges.Count;
         while (_addresses.Count > addressesMaxCount)
         {
             var oldAddress = _addresses.MinBy(x => x.Value).Key;
             _addresses.Remove(oldAddress);
-            context.Log.Info($"{oldAddress} - remove");
+            _context.Log.Info($"{oldAddress} - remove");
         }
 
         var addresses = _domains
@@ -84,6 +94,11 @@ internal class App(IContext context, IAddressSaverProcessor addressSaverProcesso
             .Union(_addresses.Keys.Order())
             .ToList();
 
-        addressSaverProcessor.Save(addresses);
+        _saveThrottler.Run(addresses, cancellationToken);
+    }
+
+    private void SaveComplete()
+    {
+        _context.Log.Info("Save complete");
     }
 }

@@ -1,5 +1,4 @@
-﻿using Lodsman.AddressSaver;
-using Lodsman.Log;
+﻿using Lodsman.Log;
 using Microsoft.Extensions.Hosting.WindowsServices;
 
 namespace Lodsman.Context;
@@ -10,16 +9,17 @@ internal abstract class BaseContext : IContext
 
     protected BaseContext(IConfig config)
     {
-        _config = config;
         Log = CreateLog();
+        _config = config;
     }
 
     public string ServiceName => $"{App.Name} - {string.Join(", ", ProcessNames.Order().ToHashSet(StringComparer.OrdinalIgnoreCase))}";
+    public abstract int MaxAddressCount { get; }
     public IReadOnlyCollection<string> ProcessNames => _config.ProcessNames;
     public abstract IReadOnlyCollection<string> Addresses { get; }
-    public abstract IAddressSaverAction AddressSaverAction { get; }
     public ILog Log { get; }
 
+    public abstract Task SaveAsync(IReadOnlyCollection<string> addresses, CancellationToken cancellationToken);
     public abstract Task ShutdownAsync();
 
     private ILog CreateLog()
