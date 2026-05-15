@@ -1,9 +1,8 @@
 ﻿using Lodsman.AddressSaver;
-using Lodsman.Shutdown;
 
 namespace Lodsman.Context.Router.Keenetic;
 
-internal class KeeneticContext : BaseContext, IAddressSaverAction, IShutdownAction
+internal class KeeneticContext : BaseContext, IAddressSaverAction
 {
     public static async Task<KeeneticContext> BuildAsync(IKeeneticConfig config)
     {
@@ -30,7 +29,6 @@ internal class KeeneticContext : BaseContext, IAddressSaverAction, IShutdownActi
     public int MaxAddressCount => KeeneticApi.MaxDomainRoutes;
     public override IReadOnlyCollection<string> Addresses => _route.Addresses.ToList();
     public override IAddressSaverAction AddressSaverAction => this;
-    public override IShutdownAction ShutdownAction => this;
 
     private async Task SaveAsync(IReadOnlyCollection<string> addresses, CancellationToken cancellationToken)
     {
@@ -39,7 +37,7 @@ internal class KeeneticContext : BaseContext, IAddressSaverAction, IShutdownActi
         await _keeneticApi.SaveDomainRouteAsync(_route, cancellationToken);
     }
 
-    private async Task ShutdownAsync()
+    public override async Task ShutdownAsync()
     {
         if (_config.ClearBeforeExit)
         {
@@ -51,19 +49,24 @@ internal class KeeneticContext : BaseContext, IAddressSaverAction, IShutdownActi
     private async void AliveKeepingStart(CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
+        {
             try
             {
                 await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken);
                 await _keeneticApi.LoginAsync(cancellationToken);
             }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
             catch (Exception ex)
             {
                 Log.Error(ex);
             }
+        }
     }
 
     Task IAddressSaverAction.SaveAsync(IReadOnlyCollection<string> addresses, CancellationToken cancellationToken) => SaveAsync(addresses, cancellationToken);
-    Task IShutdownAction.ShutdownAsync() => ShutdownAsync();
 
     public override void Dispose()
     {

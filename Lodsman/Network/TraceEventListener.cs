@@ -54,14 +54,14 @@ internal class TraceEventListener : INetworkListener
         OnConnection(data.ProcessName, data.daddr);
     }
 
+    protected virtual void OnConnection(string processName, IPAddress targetIp)
+    {
+        Connection?.Invoke(this, new ConnectionEventArgs(processName, targetIp));
+    }
+
     public void Dispose()
     {
         Connection = null;
         _session.Dispose();
-    }
-
-    protected virtual void OnConnection(string processName, IPAddress targetIp)
-    {
-        Connection?.Invoke(this, new ConnectionEventArgs(processName, targetIp));
     }
 }

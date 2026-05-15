@@ -1,15 +1,13 @@
 ﻿using System.Reflection;
 using DotMake.CommandLine;
-using Lodsman.AddressSaver;
 using Lodsman.Context;
-using Lodsman.Shutdown;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Hosting.WindowsServices;
 
 namespace Lodsman.CliRunner;
 
-internal abstract class BaseAppRunner : RootAppRunner, IConfig
+internal abstract class BaseCommand : RootCommand, IConfig
 {
     [CliOption(Alias = "-is", Required = false, Arity = CliArgumentArity.ZeroOrOne)]
     public required bool InstallService { get; set; } = false;
@@ -75,7 +73,7 @@ internal abstract class BaseAppRunner : RootAppRunner, IConfig
             options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.StopHost;
         });
         builder.Services.AddWindowsService(o => o.ServiceName = context.ServiceName);
-        builder.Services.AddHostedService(_ => new ServiceWorker(context));
+        builder.Services.AddHostedService(_ => new ServiceWorker(new AppExecutor(context)));
         var host = builder.Build();
         await host.RunAsync();
         return 0;
@@ -84,39 +82,6 @@ internal abstract class BaseAppRunner : RootAppRunner, IConfig
     private async Task<int> RunAsConsoleAsync(IContext context)
     {
         Console.Title = context.ServiceName;
-
-        try
-        {
-            using var shutdownProcessor = new PosixShutdownProcessor(context.ShutdownAction, context.Log);
-            var addressSaverProcessor = new AddressSaverProcessor(context.AddressSaverAction, context.Log, shutdownProcessor.CancellationToken);
-            var app = new App(context, addressSaverProcessor, shutdownProcessor);
-
-            return await app.RunAsync();
-        }
-        catch (Exception ex)
-        {
-            context.Log.Error(ex);
-            return ex.HResult;
-        }
-    }
-
-    internal class ServiceWorker(IContext context) : BackgroundService
-    {
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-        {
-            try
-            {
-                using var shutdownProcessor = new CancellationTokenShutdownProcessor(context.ShutdownAction, context.Log, stoppingToken);
-                var addressSaverProcessor = new AddressSaverProcessor(context.AddressSaverAction, context.Log, shutdownProcessor.CancellationToken);
-                var app = new App(context, addressSaverProcessor, shutdownProcessor);
-
-                await app.RunAsync();
-            }
-            catch (Exception ex)
-            {
-                context.Log.Error(ex);
-                Environment.Exit(ex.HResult);
-            }
-        }
+        return await new ConsoleWorker(new AppExecutor(context)).ExecuteAsync();
     }
 }

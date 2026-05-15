@@ -1,4 +1,4 @@
 ﻿using DotMake.CommandLine;
 using Lodsman.CliRunner;
 
-return await Cli.RunAsync<RootAppRunner>(args, new CliSettings { EnableDefaultExceptionHandler = true });
+return await Cli.RunAsync<RootCommand>(args, new CliSettings { EnableDefaultExceptionHandler = true });

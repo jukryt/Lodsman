@@ -1,6 +1,5 @@
 ﻿using Lodsman.AddressSaver;
 using Lodsman.Log;
-using Lodsman.Shutdown;
 using Microsoft.Extensions.Hosting.WindowsServices;
 
 namespace Lodsman.Context
@@ -16,11 +15,12 @@ namespace Lodsman.Context
         }
 
         public string ServiceName => $"{App.Name} - {string.Join(", ", ProcessNames.Order().ToHashSet(StringComparer.OrdinalIgnoreCase))}";
-        public ILog Log { get; }
         public IReadOnlyCollection<string> ProcessNames => _config.ProcessNames;
         public abstract IReadOnlyCollection<string> Addresses { get; }
         public abstract IAddressSaverAction AddressSaverAction { get; }
-        public abstract IShutdownAction ShutdownAction { get; }
+        public ILog Log { get; }
+
+        public abstract Task ShutdownAsync();
 
         private ILog CreateLog()
         {

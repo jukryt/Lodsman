@@ -2,13 +2,13 @@
 using System.Reflection;
 using Lodsman.AddressSaver;
 using Lodsman.Context;
+using Lodsman.Extension;
 using Lodsman.Network;
-using Lodsman.Shutdown;
 using NetTools;
 
 namespace Lodsman;
 
-internal class App(IContext context, IAddressSaverProcessor addressSaverProcessor, IShutdownProcessor shutdownProcessor)
+internal class App(IContext context, IAddressSaverProcessor addressSaverProcessor)
 {
     public static string Name => nameof(Lodsman);
     public static Version Version { get; } = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0);
@@ -18,7 +18,7 @@ internal class App(IContext context, IAddressSaverProcessor addressSaverProcesso
     private readonly Dictionary<string, IPAddressRange> _addressesRanges = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, DateTime> _addresses = new(StringComparer.OrdinalIgnoreCase);
 
-    public async Task<int> RunAsync()
+    public async Task<int> RunAsync(CancellationToken cancellationToken)
     {
         //System.Diagnostics.Debugger.Launch();
 
@@ -42,15 +42,14 @@ internal class App(IContext context, IAddressSaverProcessor addressSaverProcesso
             context.Log.Info($"{address} - loaded");
         }
 
-        using (var listener = TraceEventListener.Start())
-        {
-            listener.Connection += ConnectionHandler;
-            context.Log.Info("Ready...");
-            await shutdownProcessor.EndWorkAwaiter;
-            context.Log.Info("Shutdown...");
-        }
+        using var listener = TraceEventListener.Start();
+        listener.Connection += ConnectionHandler;
 
-        return await shutdownProcessor.ExitAppAwaiter;
+        context.Log.Info("Ready...");
+        await TaskExtension.AwaitTokenAsync(cancellationToken);
+        context.Log.Info("Shutdown...");
+
+        return 0;
     }
 
     private void ConnectionHandler(object? sender, ConnectionEventArgs e)

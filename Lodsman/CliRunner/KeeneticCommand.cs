@@ -4,12 +4,12 @@ using Lodsman.Context.Router.Keenetic;
 namespace Lodsman.CliRunner;
 
 [CliCommand(Name = "/keenetic", Alias = "/k", Description = "Router Keenetic",
-    Parent = typeof(RootAppRunner),
+    Parent = typeof(RootCommand),
     NamePrefixConvention = CliNamePrefixConvention.DoubleHyphen,
     ShortFormPrefixConvention = CliNamePrefixConvention.SingleHyphen,
     NameCasingConvention = CliNameCasingConvention.KebabCase,
     TreatUnmatchedTokensAsErrors = false)]
-internal class KeeneticAppRunner : BaseAppRunner, ICliRunAsyncWithReturn, IKeeneticConfig
+internal class KeeneticCommand : BaseCommand, ICliRunAsyncWithReturn, IKeeneticConfig
 {
     [CliOption(Alias = "-a", Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "Keenetic address")]
     public required string Address { get; set; }
@@ -25,7 +25,7 @@ internal class KeeneticAppRunner : BaseAppRunner, ICliRunAsyncWithReturn, IKeene
 
     public async Task<int> RunAsync()
     {
-        var context = await KeeneticContext.BuildAsync(this);
+        using var context = await KeeneticContext.BuildAsync(this);
         return await RunAsync(context);
     }
 

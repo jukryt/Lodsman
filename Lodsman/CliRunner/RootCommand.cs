@@ -7,4 +7,4 @@ namespace Lodsman.CliRunner;
     ShortFormPrefixConvention = CliNamePrefixConvention.SingleHyphen,
     NameCasingConvention = CliNameCasingConvention.KebabCase,
     TreatUnmatchedTokensAsErrors = false)]
-internal class RootAppRunner;
+internal class RootCommand;
