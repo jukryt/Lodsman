@@ -33,7 +33,7 @@ internal class KeeneticCommand : BaseCommand, ICliRunAsyncWithReturn, IKeeneticC
     {
         return
         [
-            "/k",
+            "/keen",
             $"-a \"{Address}\"",
             $"-u \"{User}\"",
             $"-p \"{Password}\"",
