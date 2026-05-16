@@ -63,9 +63,9 @@ internal class KeeneticContext : BaseContext
         }
     }
 
-    public override void Dispose()
+    public override async ValueTask DisposeAsync()
     {
         _cancellationTokenSource.Dispose();
-        base.Dispose();
+        await base.DisposeAsync();
     }
 }

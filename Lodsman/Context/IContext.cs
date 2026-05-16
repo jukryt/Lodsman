@@ -2,7 +2,7 @@
 
 namespace Lodsman.Context;
 
-internal interface IContext : IDisposable
+internal interface IContext : IAsyncDisposable
 {
     string ServiceName { get; }
     int MaxAddressCount { get; }

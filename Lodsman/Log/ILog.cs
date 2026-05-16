@@ -1,6 +1,6 @@
 ﻿namespace Lodsman.Log;
 
-internal interface ILog
+internal interface ILog : IAsyncDisposable
 {
     void Info(string message);
     void Warn(string message);

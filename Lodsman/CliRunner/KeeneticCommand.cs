@@ -25,7 +25,7 @@ internal class KeeneticCommand : BaseCommand, ICliRunAsyncWithReturn, IKeeneticC
 
     public async Task<int> RunAsync()
     {
-        using var context = await KeeneticContext.BuildAsync(this);
+        await using var context = await KeeneticContext.BuildAsync(this);
         return await RunAsync(context);
     }
 

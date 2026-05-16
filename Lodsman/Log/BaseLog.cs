@@ -24,4 +24,9 @@ internal abstract class BaseLog : ILog
     }
 
     protected abstract void Write(string message);
+
+    public virtual ValueTask DisposeAsync()
+    {
+        return ValueTask.CompletedTask;
+    }
 }

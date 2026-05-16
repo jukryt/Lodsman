@@ -35,7 +35,8 @@ internal abstract class BaseContext : IContext
         return new ConsoleLog();
     }
 
-    public virtual void Dispose()
+    public virtual async ValueTask DisposeAsync()
     {
+        await Log.DisposeAsync();
     }
 }
