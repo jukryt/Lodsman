@@ -25,7 +25,7 @@ internal abstract class BaseContext : IContext
 
     private ILog CreateLog()
     {
-        if (WindowsServiceHelpers.IsWindowsService())
+        if (_config.IsService)
         {
             var logFileName = FileSystemHelper.NormalizeFileName($"{ServiceName}.log");
             var logFilePath = Path.Combine(FileSystemHelper.GetAppDataFolder(), logFileName);

@@ -8,6 +8,8 @@ namespace Lodsman.CliRunner;
 
 internal abstract class BaseCommand : RootCommand, IConfig
 {
+    public bool IsService => WindowsServiceHelpers.IsWindowsService();
+
     [CliOption(Alias = "-is", Required = false, Arity = CliArgumentArity.ZeroOrOne)]
     public required bool InstallService { get; set; } = false;
 
@@ -30,7 +32,7 @@ internal abstract class BaseCommand : RootCommand, IConfig
         if (UninstallService)
             return await UninstallServiceAsync(context);
 
-        return WindowsServiceHelpers.IsWindowsService()
+        return IsService
             ? await RunAsServiceAsync(context)
             : await RunAsConsoleAsync(context);
     }
