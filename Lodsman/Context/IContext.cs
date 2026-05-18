@@ -4,7 +4,6 @@ namespace Lodsman.Context;
 
 internal interface IContext : IAsyncDisposable
 {
-    string ServiceName { get; }
     int MaxAddressCount { get; }
     IReadOnlyCollection<string> ProcessNames { get; }
     IReadOnlyCollection<string> Addresses { get; }

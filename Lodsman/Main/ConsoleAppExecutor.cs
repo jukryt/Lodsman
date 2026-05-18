@@ -1,35 +1,44 @@
 ﻿using Lodsman.Context;
+using Lodsman.Log;
 
 namespace Lodsman.Main;
 
-internal class ConsoleWorker
+internal class ConsoleAppExecutor
 {
-    public static async Task<int> RunAsync(IContext context)
+    public static async Task<int> ExecuteAsync(IConfig config, ILog log)
     {
-        Console.Title = context.ServiceName;
-        return await new ConsoleWorker(new AppExecutor(context)).ExecuteAsync();
+        Console.Title = config.ServiceName;
+        return await new ConsoleAppExecutor(config, log).ExecuteAsync();
     }
 
-    private readonly AppExecutor _appExecutor;
+    private readonly IConfig _config;
+    private readonly ILog _log;
     private readonly CancellationTokenSource _cancellationTokenSource = new();
     private readonly ManualResetEventSlim _endWorkEvent = new();
     private bool _isShutdown;
 
-    private ConsoleWorker(AppExecutor appExecutor)
+    private ConsoleAppExecutor(IConfig config, ILog log)
     {
-        _appExecutor = appExecutor;
+        _config = config;
+        _log = log;
     }
 
-    public async Task<int> ExecuteAsync()
+    private async Task<int> ExecuteAsync()
     {
         try
         {
+            var appExecutor = new AppExecutor(_config, _log);
             AppDomain.CurrentDomain.ProcessExit += ProcessExit;
-            return await _appExecutor.ExecuteAsync(_cancellationTokenSource.Token);
+            await appExecutor.ExecuteAsync(_cancellationTokenSource.Token);
+            return 0;
+        }
+        catch (OperationCanceledException)
+        {
+            return 0;
         }
         catch (Exception ex)
         {
-            _appExecutor.Context.Log.Error(ex);
+            _log.Error(ex);
             return ex.HResult;
         }
         finally

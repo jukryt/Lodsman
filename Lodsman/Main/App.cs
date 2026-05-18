@@ -17,23 +17,19 @@ internal class App
     private readonly HashSet<string> _domains = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, IPAddressRange> _addressesRanges = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, DateTime> _addresses = new(StringComparer.OrdinalIgnoreCase);
-    private readonly AsyncActionThrottler<IReadOnlyCollection<string>> _saveThrottler;
+    private readonly AsyncActionThrottler<IReadOnlyCollection<string>> _saveAction;
 
     public App(IContext context)
     {
         _context = context;
-        _saveThrottler = new AsyncActionThrottler<IReadOnlyCollection<string>>(_context.SaveAsync, SaveComplete, context.Log);
+        _saveAction = new AsyncActionThrottler<IReadOnlyCollection<string>>(context.SaveAsync, SaveComplete, context.Log);
 
         foreach (var processName in _context.ProcessNames)
             _processNames.Add(processName);
     }
 
-    public async Task RunAsync(CancellationToken cancellationToken)
+    public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        //System.Diagnostics.Debugger.Launch();
-
-        _context.Log.Info("Init...");
-
         foreach (var address in _context.Addresses)
         {
             if (IPAddressRange.TryParse(address, out var ipAddressRange))
@@ -54,7 +50,6 @@ internal class App
 
         _context.Log.Info("Ready...");
         await TaskExtension.AwaitTokenAsync(cancellationToken);
-        _context.Log.Info("Shutdown...");
     }
 
     public async Task ShutdownAsync()
@@ -64,6 +59,9 @@ internal class App
 
     private void ConnectionHandler(string processName, IPAddress targetIp, CancellationToken cancellationToken)
     {
+        if (cancellationToken.IsCancellationRequested)
+            return;
+
         if (string.IsNullOrEmpty(processName) ||
             !_processNames.Contains(processName))
             return;
@@ -94,7 +92,7 @@ internal class App
             .Union(_addresses.Keys.Order())
             .ToList();
 
-        _saveThrottler.Run(addresses, cancellationToken);
+        _saveAction.Run(addresses, cancellationToken);
     }
 
     private void SaveComplete()

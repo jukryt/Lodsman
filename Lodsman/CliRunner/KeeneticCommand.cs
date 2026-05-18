@@ -1,5 +1,7 @@
 ﻿using DotMake.CommandLine;
+using Lodsman.Context;
 using Lodsman.Context.Router.Keenetic;
+using Lodsman.Log;
 
 namespace Lodsman.CliRunner;
 
@@ -9,7 +11,7 @@ namespace Lodsman.CliRunner;
     ShortFormPrefixConvention = CliNamePrefixConvention.SingleHyphen,
     NameCasingConvention = CliNameCasingConvention.KebabCase,
     TreatUnmatchedTokensAsErrors = false)]
-internal class KeeneticCommand : BaseCommand, ICliRunAsyncWithReturn, IKeeneticConfig
+internal class KeeneticCommand : BaseCommand, IKeeneticConfig
 {
     [CliOption(Alias = "-a", Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "Keenetic address")]
     public required string Address { get; set; }
@@ -23,10 +25,12 @@ internal class KeeneticCommand : BaseCommand, ICliRunAsyncWithReturn, IKeeneticC
     [CliOption(Alias = "-ln", Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "Keenetic route list name")]
     public required string ListName { get; set; }
 
-    public async Task<int> RunAsync()
+    public override async Task<IContext> BuildContextAsync(ILog log, CancellationToken cancellationToken)
     {
-        await using var context = await KeeneticContext.BuildAsync(this);
-        return await RunAsync(context);
+        var api = new KeeneticApi(HttpClientHelper.Instance, Address, User, Password);
+        var route = await RetryGetDomainRouteAsync(api, log, cancellationToken);
+
+        return new KeeneticContext(this, api, route, log);
     }
 
     protected override string[] GetServiceArguments()
@@ -39,5 +43,25 @@ internal class KeeneticCommand : BaseCommand, ICliRunAsyncWithReturn, IKeeneticC
             $"-p \"{Password}\"",
             $"-ln \"{ListName}\"",
         ];
+    }
+
+    private async Task<DomainRoute> RetryGetDomainRouteAsync(KeeneticApi api, ILog log, CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            try
+            {
+                return await api.GetDomainRouteAsync(ListName, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex.Message);
+                await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
+            }
+        }
     }
 }

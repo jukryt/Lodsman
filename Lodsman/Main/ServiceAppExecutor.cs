@@ -1,12 +1,13 @@
 ﻿using Lodsman.Context;
+using Lodsman.Log;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 namespace Lodsman.Main;
 
-internal class ServiceWorker : BackgroundService
+internal class ServiceAppExecutor : BackgroundService
 {
-    public static async Task RunAsync(IContext context)
+    public static async Task ExecuteAsync(IConfig config, ILog log)
     {
         var builder = Host.CreateApplicationBuilder();
         builder.Services.Configure<HostOptions>(o => {
@@ -14,29 +15,35 @@ internal class ServiceWorker : BackgroundService
             o.StartupTimeout = TimeSpan.FromSeconds(30);
             o.ShutdownTimeout = TimeSpan.FromSeconds(30);
         });
-        builder.Services.AddWindowsService(o => o.ServiceName = context.ServiceName);
-        builder.Services.AddHostedService(_ => new ServiceWorker(new AppExecutor(context)));
+        builder.Services.AddWindowsService(o => o.ServiceName = config.ServiceName);
+        builder.Services.AddHostedService(_ => new ServiceAppExecutor(config, log));
 
         var host = builder.Build();
         await host.RunAsync();
     }
 
-    private readonly AppExecutor _appExecutor;
+    private readonly IConfig _config;
+    private readonly ILog _log;
 
-    private ServiceWorker(AppExecutor appExecutor)
+    private ServiceAppExecutor(IConfig config, ILog log)
     {
-        _appExecutor = appExecutor;
+        _config = config;
+        _log = log;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         try
         {
-            await _appExecutor.ExecuteAsync(stoppingToken);
+            var appExecutor = new AppExecutor(_config, _log);
+            await appExecutor.ExecuteAsync(stoppingToken);
+        }
+        catch (OperationCanceledException)
+        {
         }
         catch (Exception ex)
         {
-            _appExecutor.Context.Log.Error(ex);
+            _log.Error(ex);
             Environment.Exit(ex.HResult);
         }
     }

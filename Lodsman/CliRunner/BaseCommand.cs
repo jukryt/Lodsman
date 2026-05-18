@@ -1,14 +1,17 @@
 ﻿using System.Reflection;
 using DotMake.CommandLine;
 using Lodsman.Context;
+using Lodsman.Log;
 using Lodsman.Main;
 using Microsoft.Extensions.Hosting.WindowsServices;
 
 namespace Lodsman.CliRunner;
 
-internal abstract class BaseCommand : RootCommand, IConfig
+internal abstract class BaseCommand : RootCommand, ICliRunAsyncWithReturn, IConfig
 {
     public bool IsService => WindowsServiceHelpers.IsWindowsService();
+
+    public string ServiceName => $"{App.Name} - {string.Join(", ", ProcessNames.Order().ToHashSet(StringComparer.OrdinalIgnoreCase))}";
 
     [CliOption(Alias = "-is", Required = false, Arity = CliArgumentArity.ZeroOrOne)]
     public required bool InstallService { get; set; } = false;
@@ -24,22 +27,26 @@ internal abstract class BaseCommand : RootCommand, IConfig
     [CliOption(Alias = "-cbe", Required = false, Arity = CliArgumentArity.ZeroOrOne)]
     public required bool ClearBeforeExit { get; set; } = false;
 
-    protected async Task<int> RunAsync(IContext context)
+    public async Task<int> RunAsync()
     {
+        await using var log = CreateLog();
+
         if (InstallService)
-            return await InstallServiceAsync(context);
+            return await InstallServiceAsync(log);
 
         if (UninstallService)
-            return await UninstallServiceAsync(context);
+            return await UninstallServiceAsync(log);
 
         return IsService
-            ? await RunAsServiceAsync(context)
-            : await RunAsConsoleAsync(context);
+            ? await RunAsServiceAsync(log)
+            : await RunAsConsoleAsync(log);
     }
+
+    public abstract Task<IContext> BuildContextAsync(ILog log, CancellationToken cancellationToken);
 
     protected abstract string[] GetServiceArguments();
 
-    private async Task<int> InstallServiceAsync(IContext context)
+    private async Task<int> InstallServiceAsync(ILog log)
     {
         var servicePath = Environment.ProcessPath ?? Assembly.GetExecutingAssembly().Location;
 
@@ -48,32 +55,44 @@ internal abstract class BaseCommand : RootCommand, IConfig
         if (ClearBeforeExit) serviceArguments.Add("-cbe");
 
         serviceArguments = serviceArguments.Select(x => x.Replace("\"", "\\\"")).ToList();
-        var installArguments = $"/c sc create \"{context.ServiceName}\" binPath= \"\\\"{servicePath}\\\" {string.Join(" ", serviceArguments)}\" start= auto";
-        var installResult = await ProcessHelper.ExecuteAsync("cmd", installArguments, context.Log);
+        var installArguments = $"/c sc create \"{ServiceName}\" binPath= \"\\\"{servicePath}\\\" {string.Join(" ", serviceArguments)}\" start= auto";
+        var installResult = await ProcessHelper.ExecuteAsync("cmd", installArguments, log);
         if (installResult != 0 && installResult != 1073)
             return installResult;
 
-        var startArguments = $"/c sc start \"{context.ServiceName}\"";
-        return await ProcessHelper.ExecuteAsync("cmd", startArguments, context.Log);
+        var startArguments = $"/c sc start \"{ServiceName}\"";
+        return await ProcessHelper.ExecuteAsync("cmd", startArguments, log);
     }
 
-    private async Task<int> UninstallServiceAsync(IContext context)
+    private async Task<int> UninstallServiceAsync(ILog log)
     {
-        var stopArguments = $"/c sc stop \"{context.ServiceName}\"";
-        await ProcessHelper.ExecuteAsync("cmd", stopArguments, context.Log);
+        var stopArguments = $"/c sc stop \"{ServiceName}\"";
+        await ProcessHelper.ExecuteAsync("cmd", stopArguments, log);
 
-        var deleteArguments = $"/c sc delete \"{context.ServiceName}\"";
-        return await ProcessHelper.ExecuteAsync("cmd", deleteArguments, context.Log);
+        var deleteArguments = $"/c sc delete \"{ServiceName}\"";
+        return await ProcessHelper.ExecuteAsync("cmd", deleteArguments, log);
     }
 
-    private async Task<int> RunAsServiceAsync(IContext context)
+    private async Task<int> RunAsServiceAsync(ILog log)
     {
-        await ServiceWorker.RunAsync(context);
+        await ServiceAppExecutor.ExecuteAsync(this, log);
         return 0;
     }
 
-    private async Task<int> RunAsConsoleAsync(IContext context)
+    private async Task<int> RunAsConsoleAsync(ILog log)
     {
-        return await ConsoleWorker.RunAsync(context);
+        return await ConsoleAppExecutor.ExecuteAsync(this, log);
+    }
+
+    private ILog CreateLog()
+    {
+        if (IsService)
+        {
+            var logFileName = FileSystemHelper.NormalizeFileName($"{ServiceName}.log");
+            var logFilePath = Path.Combine(FileSystemHelper.GetAppDataFolder(), logFileName);
+            return new FileLog(logFilePath);
+        }
+
+        return new ConsoleLog();
     }
 }
