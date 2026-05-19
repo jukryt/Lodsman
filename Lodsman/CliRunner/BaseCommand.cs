@@ -1,5 +1,4 @@
-﻿using System.Reflection;
-using DotMake.CommandLine;
+﻿using DotMake.CommandLine;
 using Lodsman.Context;
 using Lodsman.Log;
 using Lodsman.Main;
@@ -48,7 +47,12 @@ internal abstract class BaseCommand : RootCommand, ICliRunAsyncWithReturn, IConf
 
     private async Task<int> InstallServiceAsync(ILog log)
     {
-        var servicePath = Environment.ProcessPath ?? Assembly.GetExecutingAssembly().Location;
+        var servicePath = Environment.ProcessPath;
+        if (!File.Exists(servicePath))
+        {
+            log.Error($"Service not found in path: {servicePath}");
+            return 1;
+        }
 
         var serviceArguments = new List<string>(GetServiceArguments());
         serviceArguments.AddRange(ProcessNames.Select(processName => $"-pn \"{processName}\""));
