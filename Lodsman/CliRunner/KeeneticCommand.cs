@@ -5,7 +5,7 @@ using Lodsman.Log;
 
 namespace Lodsman.CliRunner;
 
-[CliCommand(Name = "/keenetic", Alias = "/keen", Description = "Router Keenetic",
+[CliCommand(Name = "/keenetic", Alias = "/keen", Description = "Router Keenetic(Netcraze)",
     Parent = typeof(RootCommand),
     NamePrefixConvention = CliNamePrefixConvention.DoubleHyphen,
     ShortFormPrefixConvention = CliNamePrefixConvention.SingleHyphen,
@@ -13,16 +13,16 @@ namespace Lodsman.CliRunner;
     TreatUnmatchedTokensAsErrors = false)]
 internal class KeeneticCommand : BaseCommand, IKeeneticConfig
 {
-    [CliOption(Alias = "-a", Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "Keenetic address")]
+    [CliOption(Alias = "-a", Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "ip address")]
     public required string Address { get; set; }
 
-    [CliOption(Alias = "-u", Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "Keenetic user name")]
+    [CliOption(Alias = "-u", Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "user name")]
     public required string User { get; set; }
 
-    [CliOption(Alias = "-p", Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "Keenetic password")]
+    [CliOption(Alias = "-p", Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "password")]
     public required string Password { get; set; }
 
-    [CliOption(Alias = "-ln", Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "Keenetic route list name")]
+    [CliOption(Alias = "-ln", Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "dns route list name")]
     public required string ListName { get; set; }
 
     public override async Task<IContext> BuildContextAsync(ILog log, CancellationToken cancellationToken)
