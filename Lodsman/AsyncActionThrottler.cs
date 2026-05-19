@@ -2,7 +2,7 @@
 
 namespace Lodsman;
 
-internal class AsyncActionThrottler<T>(Func<T, CancellationToken, Task> action, Action? actionComplete = null, ILog? log = null)
+internal class AsyncActionThrottler<T>(Func<T, CancellationToken, Task> action, TimeSpan throttlingTime, Action? actionComplete = null, ILog? log = null)
 {
     private bool _isRunning = false;
     private ulong _counter = 0;
@@ -21,7 +21,7 @@ internal class AsyncActionThrottler<T>(Func<T, CancellationToken, Task> action, 
         {
             do
             {
-                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+                await Task.Delay(throttlingTime, cancellationToken);
 
                 if (Interlocked.Read(ref _counter) != counter)
                     return;

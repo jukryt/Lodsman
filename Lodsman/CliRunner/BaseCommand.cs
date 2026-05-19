@@ -23,6 +23,9 @@ internal abstract class BaseCommand : RootCommand, ICliRunAsyncWithReturn, IConf
 
     public List<string> ProcessNames => ProcessName;
 
+    [CliOption(Alias = "-sd", Required = false, Arity = CliArgumentArity.ZeroOrOne, HelpName = "Milliseconds")]
+    public uint SavingDelay { get; set; } = 1000;
+
     [CliOption(Alias = "-cbe", Required = false, Arity = CliArgumentArity.ZeroOrOne)]
     public required bool ClearBeforeExit { get; set; } = false;
 
@@ -56,6 +59,7 @@ internal abstract class BaseCommand : RootCommand, ICliRunAsyncWithReturn, IConf
 
         var serviceArguments = new List<string>(GetServiceArguments());
         serviceArguments.AddRange(ProcessNames.Select(processName => $"-pn \"{processName}\""));
+        serviceArguments.Add($"-sd {SavingDelay}");
         if (ClearBeforeExit) serviceArguments.Add("-cbe");
 
         serviceArguments = serviceArguments.Select(x => x.Replace("\"", "\\\"")).ToList();

@@ -22,7 +22,7 @@ internal class App
     public App(IContext context)
     {
         _context = context;
-        _saveAction = new AsyncActionThrottler<IReadOnlyCollection<string>>(context.SaveAsync, SaveComplete, context.Log);
+        _saveAction = new AsyncActionThrottler<IReadOnlyCollection<string>>(context.SaveAsync, context.SavingDelay, SaveComplete, context.Log);
 
         foreach (var processName in _context.ProcessNames)
             _processNames.Add(processName);
