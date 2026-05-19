@@ -24,10 +24,8 @@ internal class ProcessHelper
         process.OutputDataReceived += (_, e) => log.Info(e.Data ?? string.Empty);
         process.Exited += (_, _) => processCompletionSource.TrySetResult(process.ExitCode);
 
-        log.Info($"Start process: {startInfo.FileName} {startInfo.Arguments}");
         process.Start();
         var result = await processCompletionSource.Task;
-        log.Info($"Process return code: {result}");
 
         return result;
     }

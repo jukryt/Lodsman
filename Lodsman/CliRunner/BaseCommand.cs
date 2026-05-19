@@ -56,21 +56,33 @@ internal abstract class BaseCommand : RootCommand, ICliRunAsyncWithReturn, IConf
 
         serviceArguments = serviceArguments.Select(x => x.Replace("\"", "\\\"")).ToList();
         var installArguments = $"/c sc create \"{ServiceName}\" binPath= \"\\\"{servicePath}\\\" {string.Join(" ", serviceArguments)}\" start= auto";
+        log.Info($"Install Service: \"{ServiceName}\"");
         var installResult = await ProcessHelper.ExecuteAsync("cmd", installArguments, log);
+        log.Info($"Result code: {installResult}");
         if (installResult != 0 && installResult != 1073)
             return installResult;
 
         var startArguments = $"/c sc start \"{ServiceName}\"";
-        return await ProcessHelper.ExecuteAsync("cmd", startArguments, log);
+        log.Info($"Start Service: \"{ServiceName}\"");
+        var startResult = await ProcessHelper.ExecuteAsync("cmd", startArguments, log);
+        log.Info($"Result code: {startResult}");
+
+        return startResult;
     }
 
     private async Task<int> UninstallServiceAsync(ILog log)
     {
         var stopArguments = $"/c sc stop \"{ServiceName}\"";
-        await ProcessHelper.ExecuteAsync("cmd", stopArguments, log);
+        log.Info($"Stop Service: \"{ServiceName}\"");
+        var stopResult = await ProcessHelper.ExecuteAsync("cmd", stopArguments, log);
+        log.Info($"Result code: {stopResult}");
 
         var deleteArguments = $"/c sc delete \"{ServiceName}\"";
-        return await ProcessHelper.ExecuteAsync("cmd", deleteArguments, log);
+        log.Info($"Uninstall Service: \"{ServiceName}\"");
+        var deleteResult = await ProcessHelper.ExecuteAsync("cmd", deleteArguments, log);
+        log.Info($"Result code: {stopResult}");
+
+        return deleteResult;
     }
 
     private async Task<int> RunAsServiceAsync(ILog log)
