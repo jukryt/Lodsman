@@ -1,21 +1,21 @@
-﻿namespace Lodsman.AddressSaver;
+﻿using Lodsman.Log;
 
-internal class AddressSaverProcessor(IAddressSaverAction action, CancellationToken cancellationToken)
+namespace Lodsman;
+
+internal class AsyncActionThrottler<T>(Func<T, CancellationToken, Task> action, Action? actionComplete = null, ILog? log = null)
 {
     private bool _isRunning = false;
     private ulong _counter = 0;
 
-    public int MaxAddressCount => action.MaxAddressCount;
-
-    public void Save(IReadOnlyCollection<string> addresses)
+    public void Run(T data, CancellationToken cancellationToken = default)
     {
         if (cancellationToken.IsCancellationRequested)
             return;
 
-        SaveAsync(addresses, Interlocked.Increment(ref _counter));
+        RunAsync(data, Interlocked.Increment(ref _counter), cancellationToken);
     }
 
-    private async void SaveAsync(IReadOnlyCollection<string> addresses, ulong counter)
+    private async void RunAsync(T data, ulong counter, CancellationToken cancellationToken)
     {
         try
         {
@@ -35,17 +35,17 @@ internal class AddressSaverProcessor(IAddressSaverAction action, CancellationTok
 
         try
         {
-            await action.SaveAsync(addresses, cancellationToken);
+            await action(data, cancellationToken);
 
             if (Interlocked.Read(ref _counter) == counter)
-                Console.WriteLine("Save complete");
+                actionComplete?.Invoke();
         }
         catch (OperationCanceledException)
         {
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Save error: {ex.GetType().Name} - {ex.Message}");
+            log?.Error(ex);
         }
         finally
         {

@@ -1,33 +1,36 @@
 ﻿using System.Net;
 using System.Reflection;
-using Lodsman.AddressSaver;
+using Lodsman.Context;
+using Lodsman.Extension;
 using Lodsman.Network;
-using Lodsman.Shutdown;
 using NetTools;
 
-namespace Lodsman;
+namespace Lodsman.Main;
 
-internal class App(IConfig config)
+internal class App
 {
     public static string Name => nameof(Lodsman);
     public static Version Version { get; } = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0);
 
+    private readonly IContext _context;
     private readonly HashSet<string> _processNames = new (StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _domains = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, IPAddressRange> _addressesRanges = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, DateTime> _addresses = new(StringComparer.OrdinalIgnoreCase);
+    private readonly AsyncActionThrottler<IReadOnlyCollection<string>> _saveAction;
 
-    public async Task<int> RunAsync()
+    public App(IContext context)
     {
-        config.ProcessNames.ForEach(n => _processNames.Add(n));
-        Console.Title = $"{Name} - {string.Join(", ", _processNames)}";
+        _context = context;
+        _saveAction = new AsyncActionThrottler<IReadOnlyCollection<string>>(context.SaveAsync, SaveComplete, context.Log);
 
-        Console.WriteLine("Init...");
-        using var context = await ContextBuilder.BuildAsync(config);
-        using var shutdownProcessor = new ShutdownProcessor(context.ShutdownAction);
-        var addressSaverProcessor = new AddressSaverProcessor(context.AddressSaverAction, shutdownProcessor.CancellationToken);
+        foreach (var processName in _context.ProcessNames)
+            _processNames.Add(processName);
+    }
 
-        foreach (var address in context.Addresses)
+    public async Task ExecuteAsync(CancellationToken cancellationToken)
+    {
+        foreach (var address in _context.Addresses)
         {
             if (IPAddressRange.TryParse(address, out var ipAddressRange))
             {
@@ -39,27 +42,29 @@ internal class App(IConfig config)
             else
                 _domains.Add(address);
 
-            Console.WriteLine($"{address} - loaded");
+            _context.Log.Info($"{address} - loaded");
         }
 
-        using (var listener = TraceEventListener.Start())
-        {
-            listener.Connection += (_, e) => ConnectionHandler(e.ProcessName, e.Info, addressSaverProcessor);
-            Console.WriteLine("Ready...");
-            await shutdownProcessor.EndWorkAwaiter;
-            Console.WriteLine("Shutdown...");
-        }
+        using var listener = TraceEventListener.Start();
+        listener.Connection += (_, e) => ConnectionHandler(e.ProcessName, e.TargetIp, cancellationToken);
 
-        return await shutdownProcessor.ExitAppAwaiter;
+        _context.Log.Info("Ready...");
+        await TaskExtension.AwaitTokenAsync(cancellationToken);
     }
 
-    private void ConnectionHandler(string processName, ConnectionInfo info, AddressSaverProcessor saverProcessor)
+    public async Task ShutdownAsync()
     {
+        await _context.ShutdownAsync();
+    }
+
+    private void ConnectionHandler(string processName, IPAddress targetIp, CancellationToken cancellationToken)
+    {
+        if (cancellationToken.IsCancellationRequested)
+            return;
+
         if (string.IsNullOrEmpty(processName) ||
             !_processNames.Contains(processName))
             return;
-
-        var targetIp = info.TargetIp;
 
         if (IPAddress.IsLoopback(targetIp))
             return;
@@ -72,14 +77,14 @@ internal class App(IConfig config)
             return;
 
         _addresses.Add(address, DateTime.Now);
-        Console.WriteLine($"{address} - added");
+        _context.Log.Info($"{address} - added");
 
-        var addressesMaxCount = saverProcessor.MaxAddressCount - _domains.Count - _addressesRanges.Count;
+        var addressesMaxCount = _context.MaxAddressCount - _domains.Count - _addressesRanges.Count;
         while (_addresses.Count > addressesMaxCount)
         {
             var oldAddress = _addresses.MinBy(x => x.Value).Key;
             _addresses.Remove(oldAddress);
-            Console.WriteLine($"{oldAddress} - remove");
+            _context.Log.Info($"{oldAddress} - remove");
         }
 
         var addresses = _domains
@@ -87,6 +92,11 @@ internal class App(IConfig config)
             .Union(_addresses.Keys.Order())
             .ToList();
 
-        saverProcessor.Save(addresses);
+        _saveAction.Run(addresses, cancellationToken);
+    }
+
+    private void SaveComplete()
+    {
+        _context.Log.Info("Save complete");
     }
 }

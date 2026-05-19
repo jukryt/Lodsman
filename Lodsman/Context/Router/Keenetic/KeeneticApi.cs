@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
 
-namespace Lodsman.Router.Keenetic;
+namespace Lodsman.Context.Router.Keenetic;
 
 internal class KeeneticApi
 {
@@ -44,7 +44,7 @@ internal class KeeneticApi
         var loginRequestContent = new StringContent(loginRequestData.ToJsonString(), Encoding.UTF8, "application/json");
         var loginResponse = await _client.PostAsync(authUri, loginRequestContent, cancellationToken);
         if (!loginResponse.IsSuccessStatusCode)
-            throw new Exception($"Keenetic auth error: {(int)loginResponse.StatusCode}");
+            throw new Exception($"Auth error: {(int)loginResponse.StatusCode}");
     }
 
     public async Task<DomainRoute> GetDomainRouteAsync(string listName, CancellationToken cancellationToken = default)
