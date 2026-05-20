@@ -46,7 +46,7 @@ internal abstract class BaseCommand : RootCommand, ICliRunAsyncWithReturn, IConf
 
     public abstract Task<IContext> BuildContextAsync(ILog log, CancellationToken cancellationToken);
 
-    protected abstract string[] GetServiceArguments();
+    protected abstract IReadOnlyCollection<string> GetServiceArguments();
 
     private async Task<int> InstallServiceAsync(ILog log)
     {
