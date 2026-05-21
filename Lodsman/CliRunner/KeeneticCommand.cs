@@ -22,36 +22,46 @@ internal class KeeneticCommand : BaseCommand, IKeeneticConfig
     [CliOption(Alias = "-p", Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "password")]
     public required string Password { get; set; }
 
-    [CliOption(Alias = "-ln", Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "dns route list name")]
-    public required string ListName { get; set; }
+    [CliOption(Alias = "-ln", Required = true, Arity = CliArgumentArity.OneOrMore, HelpName = "dns route list name")]
+    public required List<string> ListName { get; set; }
+
+    public List<string> ListNames => ListName;
 
     public override async Task<IContext> BuildContextAsync(ILog log, CancellationToken cancellationToken)
     {
         var api = new KeeneticApi(HttpClientHelper.Instance, Address, User, Password);
-        var route = await RetryGetDomainRouteAsync(api, log, cancellationToken);
+        var routes = await RetryGetDomainRoutesAsync(api, log, cancellationToken);
 
-        return new KeeneticContext(this, api, route, log);
+        return new KeeneticContext(this, api, routes.ToArray(), log);
     }
 
-    protected override string[] GetServiceArguments()
+    protected override IReadOnlyCollection<string> GetServiceArguments()
     {
-        return
-        [
+        var arguments = new List<string>
+        {
             "/keen",
             $"-a \"{Address}\"",
             $"-u \"{User}\"",
             $"-p \"{Password}\"",
-            $"-ln \"{ListName}\"",
-        ];
+        };
+
+        arguments.AddRange(ListNames.Select(listName => $"-ln \"{listName}\""));
+
+        return arguments;
     }
 
-    private async Task<DomainRoute> RetryGetDomainRouteAsync(KeeneticApi api, ILog log, CancellationToken cancellationToken)
+    private async Task<IReadOnlyCollection<DomainRoute>> RetryGetDomainRoutesAsync(KeeneticApi api, ILog log, CancellationToken cancellationToken)
     {
         while (true)
         {
+            var result = new List<DomainRoute>();
+
             try
             {
-                return await api.GetDomainRouteAsync(ListName, cancellationToken);
+                foreach (var listName in ListNames)
+                    result.Add(await api.GetDomainRouteAsync(listName, cancellationToken));
+
+                return result;
             }
             catch (OperationCanceledException)
             {

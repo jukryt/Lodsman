@@ -89,7 +89,7 @@ internal class App
 
         var addresses = _domains
             .Union(_addressesRanges.Keys)
-            .Union(_addresses.Keys.Order())
+            .Union(_addresses.Keys)
             .ToList();
 
         _saveAction.Run(addresses, cancellationToken);
