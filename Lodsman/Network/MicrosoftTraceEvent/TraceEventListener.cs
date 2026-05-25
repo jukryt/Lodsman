@@ -18,7 +18,7 @@ internal class TraceEventListener : INetworkListener
 
     private TraceEventListener()
     {
-        _tcpIpSession = new TraceEventSession($"{nameof(Lodsman)}TcpIpSession");
+        _tcpIpSession = new TraceEventSession(KernelTraceEventParser.KernelSessionName);
         _tcpIpSession.EnableKernelProvider(KernelTraceEventParser.Keywords.NetworkTCPIP);
         _tcpIpSession.Source.Kernel.TcpIpSend += TcpIpv4Send;
         _tcpIpSession.Source.Kernel.TcpIpSendIPV6 += TcpIpv6Send;
