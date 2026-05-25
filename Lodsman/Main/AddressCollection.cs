@@ -9,7 +9,7 @@ namespace Lodsman.Main;
 internal class AddressCollection(int maxCount, ILog log)
 {
     private readonly Dictionary<string, IPAddressRange> _ipRanges = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ConcurrentDictionary<string, long> _ips = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, long> _ips = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _others = new(StringComparer.OrdinalIgnoreCase);
 
     public void Init(IReadOnlyCollection<string> addresses)
@@ -45,11 +45,11 @@ internal class AddressCollection(int maxCount, ILog log)
 
         log.Info($"{address} - added");
 
-        var addressesMaxCount = maxCount - _ipRanges.Count - _others.Count;
-        while (_ips.Count > addressesMaxCount)
+        var ipMaxCount = maxCount - _ipRanges.Count - _others.Count;
+        while (_ips.Count > ipMaxCount)
         {
             var oldAddress = _ips.MinBy(x => x.Value).Key;
-            _ips.TryRemove(oldAddress, out _);
+            _ips.Remove(oldAddress, out _);
             log.Info($"{oldAddress} - remove");
         }
 
