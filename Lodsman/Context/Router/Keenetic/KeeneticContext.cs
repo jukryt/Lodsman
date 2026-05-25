@@ -80,6 +80,10 @@ internal class KeeneticContext : BaseContext
             {
                 break;
             }
+            catch (HttpConnectException ex)
+            {
+                // ignore
+            }
             catch (Exception ex)
             {
                 Log.Error(ex);

@@ -29,7 +29,7 @@ internal class KeeneticCommand : BaseCommand, IKeeneticConfig
 
     public override async Task<IContext> BuildContextAsync(ILog log, CancellationToken cancellationToken)
     {
-        var api = new KeeneticApi(HttpClientHelper.Instance, Address, User, Password);
+        var api = new KeeneticApi(HttpClientHelper.Wrapper, Address, User, Password);
         var routes = await RetryGetDomainRoutesAsync(api, log, cancellationToken);
 
         return new KeeneticContext(this, api, routes.ToArray(), log);

@@ -4,64 +4,63 @@ using System.Net;
 using Lodsman.Log;
 using NetTools;
 
-namespace Lodsman.Main
+namespace Lodsman.Main;
+
+internal class AddressCollection(int maxCount, ILog log)
 {
-    internal class AddressCollection(int maxCount, ILog log)
+    private readonly Dictionary<string, IPAddressRange> _ipRanges = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, long> _ips = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _others = new(StringComparer.OrdinalIgnoreCase);
+
+    public void Init(IReadOnlyCollection<string> addresses)
     {
-        private readonly Dictionary<string, IPAddressRange> _ipRanges = new(StringComparer.OrdinalIgnoreCase);
-        private readonly ConcurrentDictionary<string, long> _ips = new(StringComparer.OrdinalIgnoreCase);
-        private readonly HashSet<string> _others = new(StringComparer.OrdinalIgnoreCase);
-
-        public void Init(IReadOnlyCollection<string> addresses)
+        foreach (var address in addresses)
         {
-            foreach (var address in addresses)
+            if (IPAddressRange.TryParse(address, out var ipAddressRange))
             {
-                if (IPAddressRange.TryParse(address, out var ipAddressRange))
-                {
-                    if (ipAddressRange.AddressCount > 1)
-                        _ipRanges.TryAdd(address, ipAddressRange);
-                    else
-                        _ips.TryAdd(address, Stopwatch.GetTimestamp());
-
-                    log.Info($"{address} - loaded");
-                }
+                if (ipAddressRange.AddressCount > 1)
+                    _ipRanges.TryAdd(address, ipAddressRange);
                 else
-                    _others.Add(address);
+                    _ips.TryAdd(address, Stopwatch.GetTimestamp());
+
+                log.Info($"{address} - loaded");
             }
-
-            log.Info($"Addresses loaded: {Count}");
+            else
+                _others.Add(address);
         }
 
-        public int Count => _ipRanges.Count + _ips.Count + _others.Count;
+        log.Info($"Addresses loaded: {Count}");
+    }
 
-        public bool TryAdd(IPAddress ipAddress)
+    public int Count => _ipRanges.Count + _ips.Count + _others.Count;
+
+    public bool TryAdd(IPAddress ipAddress)
+    {
+        if (_ipRanges.Values.Any(r => r.Contains(ipAddress)))
+            return false;
+
+        var address = ipAddress.ToString();
+        if (!_ips.TryAdd(address, Stopwatch.GetTimestamp()))
+            return false;
+
+        log.Info($"{address} - added");
+
+        var addressesMaxCount = maxCount - _ipRanges.Count - _others.Count;
+        while (_ips.Count > addressesMaxCount)
         {
-            if (_ipRanges.Values.Any(r => r.Contains(ipAddress)))
-                return false;
-
-            var address = ipAddress.ToString();
-            if (!_ips.TryAdd(address, Stopwatch.GetTimestamp()))
-                return false;
-
-            log.Info($"{address} - added");
-
-            var addressesMaxCount = maxCount - _ipRanges.Count - _others.Count;
-            while (_ips.Count > addressesMaxCount)
-            {
-                var oldAddress = _ips.MinBy(x => x.Value).Key;
-                _ips.TryRemove(oldAddress, out _);
-                log.Info($"{oldAddress} - remove");
-            }
-
-            return true;
+            var oldAddress = _ips.MinBy(x => x.Value).Key;
+            _ips.TryRemove(oldAddress, out _);
+            log.Info($"{oldAddress} - remove");
         }
 
-        public IReadOnlyCollection<string> GetAll()
-        {
-            return _others
-                .Union(_ipRanges.Keys)
-                .Union(_ips.Keys)
-                .ToList();
-        }
+        return true;
+    }
+
+    public IReadOnlyCollection<string> GetAll()
+    {
+        return _others
+            .Union(_ipRanges.Keys)
+            .Union(_ips.Keys)
+            .ToList();
     }
 }

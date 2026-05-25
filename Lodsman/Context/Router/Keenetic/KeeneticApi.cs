@@ -9,13 +9,13 @@ internal class KeeneticApi
 {
     public const int MaxDomainRoutes = 300;
 
-    private readonly HttpClient _client;
+    private readonly HttpClientWrapper _client;
     private readonly SemaphoreSlim _loginSemaphore;
     private readonly Uri _baseUri;
     private readonly string _user;
     private readonly string _password;
 
-    public KeeneticApi(HttpClient client, string address, string user, string password)
+    public KeeneticApi(HttpClientWrapper client, string address, string user, string password)
     {
         _client = client;
         _loginSemaphore = new SemaphoreSlim(1, 1);
@@ -30,7 +30,7 @@ internal class KeeneticApi
         try
         {
             var authUri = new Uri(_baseUri, "auth");
-            var authResponse = await _client.GetAsync(authUri, cancellationToken);
+            var authResponse = await _client.CallAsync(c => c.GetAsync(authUri, cancellationToken));
             if (authResponse.IsSuccessStatusCode)
                 return;
 
@@ -48,7 +48,7 @@ internal class KeeneticApi
             };
 
             var loginRequestContent = new StringContent(loginRequestData.ToJsonString(), Encoding.UTF8, "application/json");
-            var loginResponse = await _client.PostAsync(authUri, loginRequestContent, cancellationToken);
+            var loginResponse = await _client.CallAsync(c => c.PostAsync(authUri, loginRequestContent, cancellationToken));
             if (!loginResponse.IsSuccessStatusCode)
                 throw new Exception($"Auth error: {(int)loginResponse.StatusCode}");
         }
@@ -158,12 +158,12 @@ internal class KeeneticApi
     {
         var rciUri = new Uri(_baseUri, "rci/");
         var requestContent = new StringContent(request.ToJsonString(), Encoding.UTF8, "application/json");
-        var response = await _client.PostAsync(rciUri, requestContent, cancellationToken);
+        var response = await _client.CallAsync(c => c.PostAsync(rciUri, requestContent, cancellationToken));
 
         if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
             await LoginAsync(cancellationToken);
-            response = await _client.PostAsync(rciUri, requestContent, cancellationToken);
+            response = await _client.CallAsync(c => c.PostAsync(rciUri, requestContent, cancellationToken));
         }
 
         if (!response.IsSuccessStatusCode)
