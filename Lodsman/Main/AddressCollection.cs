@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using Lodsman.Log;
 using NetTools;
@@ -8,7 +9,7 @@ namespace Lodsman.Main
     internal class AddressCollection(int maxCount, ILog log)
     {
         private readonly Dictionary<string, IPAddressRange> _ipRanges = new(StringComparer.OrdinalIgnoreCase);
-        private readonly ConcurrentDictionary<string, DateTime> _ips = new(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, long> _ips = new(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> _others = new(StringComparer.OrdinalIgnoreCase);
 
         public void Init(IReadOnlyCollection<string> addresses)
@@ -20,14 +21,18 @@ namespace Lodsman.Main
                     if (ipAddressRange.AddressCount > 1)
                         _ipRanges.TryAdd(address, ipAddressRange);
                     else
-                        _ips.TryAdd(address, DateTime.Now);
+                        _ips.TryAdd(address, Stopwatch.GetTimestamp());
 
                     log.Info($"{address} - loaded");
                 }
                 else
                     _others.Add(address);
             }
+
+            log.Info($"Addresses loaded: {Count}");
         }
+
+        public int Count => _ipRanges.Count + _ips.Count + _others.Count;
 
         public bool TryAdd(IPAddress ipAddress)
         {
@@ -35,7 +40,7 @@ namespace Lodsman.Main
                 return false;
 
             var address = ipAddress.ToString();
-            if (!_ips.TryAdd(address, DateTime.Now))
+            if (!_ips.TryAdd(address, Stopwatch.GetTimestamp()))
                 return false;
 
             log.Info($"{address} - added");
