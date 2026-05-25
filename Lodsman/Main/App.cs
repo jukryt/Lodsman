@@ -1,9 +1,9 @@
-﻿using System.Net;
+﻿using System.Collections.ObjectModel;
+using System.Net;
 using System.Reflection;
 using Lodsman.Context;
 using Lodsman.Extension;
-using Lodsman.Network;
-using NetTools;
+using Lodsman.Network.MicrosoftTraceEvent;
 
 namespace Lodsman.Main;
 
@@ -13,40 +13,28 @@ internal class App
     public static Version Version { get; } = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0);
 
     private readonly IContext _context;
-    private readonly HashSet<string> _processNames = new (StringComparer.OrdinalIgnoreCase);
-    private readonly HashSet<string> _domains = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, IPAddressRange> _addressesRanges = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, DateTime> _addresses = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ReadOnlySet<string> _processNames;
+    private readonly AddressCollection _addresses;
     private readonly AsyncActionThrottler<IReadOnlyCollection<string>> _saveAction;
 
     public App(IContext context)
     {
         _context = context;
+        _addresses = new AddressCollection(context.MaxAddressCount, context.Log);
         _saveAction = new AsyncActionThrottler<IReadOnlyCollection<string>>(context.SaveAsync, context.SavingDelay, SaveComplete, context.Log);
 
+        var processNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var processName in _context.ProcessNames)
-            _processNames.Add(processName);
+            processNames.Add(processName);
+        _processNames = new ReadOnlySet<string>(processNames);
     }
 
     public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        foreach (var address in _context.Addresses)
-        {
-            if (IPAddressRange.TryParse(address, out var ipAddressRange))
-            {
-                if (ipAddressRange.AddressCount > 1)
-                    _addressesRanges.Add(address, ipAddressRange);
-                else
-                    _addresses.Add(address, DateTime.Now);
-            }
-            else
-                _domains.Add(address);
-
-            _context.Log.Info($"{address} - loaded");
-        }
+        _addresses.Init(_context.Addresses);
 
         using var listener = TraceEventListener.Start();
-        listener.Connection += (_, e) => ConnectionHandler(e.ProcessName, e.TargetIp, cancellationToken);
+        listener.IpSend += (_, e) => IpSendHandler(e.ProcessName, e.TargetIp, cancellationToken);
 
         _context.Log.Info("Ready...");
         await TaskExtension.AwaitTokenAsync(cancellationToken);
@@ -57,7 +45,7 @@ internal class App
         await _context.ShutdownAsync();
     }
 
-    private void ConnectionHandler(string processName, IPAddress targetIp, CancellationToken cancellationToken)
+    private void IpSendHandler(string processName, IPAddress targetIp, CancellationToken cancellationToken)
     {
         if (cancellationToken.IsCancellationRequested)
             return;
@@ -69,29 +57,10 @@ internal class App
         if (IPAddress.IsLoopback(targetIp))
             return;
 
-        if (_addressesRanges.Values.Any(r => r.Contains(targetIp)))
+        if (!_addresses.TryAdd(targetIp))
             return;
 
-        var address = targetIp.ToString();
-        if (_addresses.ContainsKey(address))
-            return;
-
-        _addresses.Add(address, DateTime.Now);
-        _context.Log.Info($"{address} - added");
-
-        var addressesMaxCount = _context.MaxAddressCount - _domains.Count - _addressesRanges.Count;
-        while (_addresses.Count > addressesMaxCount)
-        {
-            var oldAddress = _addresses.MinBy(x => x.Value).Key;
-            _addresses.Remove(oldAddress);
-            _context.Log.Info($"{oldAddress} - remove");
-        }
-
-        var addresses = _domains
-            .Union(_addressesRanges.Keys)
-            .Union(_addresses.Keys)
-            .ToList();
-
+        var addresses = _addresses.GetAll();
         _saveAction.Run(addresses, cancellationToken);
     }
 

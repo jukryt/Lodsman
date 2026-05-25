@@ -1,0 +1,62 @@
+﻿using System.Collections.Concurrent;
+using System.Net;
+using Lodsman.Log;
+using NetTools;
+
+namespace Lodsman.Main
+{
+    internal class AddressCollection(int maxCount, ILog log)
+    {
+        private readonly Dictionary<string, IPAddressRange> _ipRanges = new(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, DateTime> _ips = new(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _others = new(StringComparer.OrdinalIgnoreCase);
+
+        public void Init(IReadOnlyCollection<string> addresses)
+        {
+            foreach (var address in addresses)
+            {
+                if (IPAddressRange.TryParse(address, out var ipAddressRange))
+                {
+                    if (ipAddressRange.AddressCount > 1)
+                        _ipRanges.TryAdd(address, ipAddressRange);
+                    else
+                        _ips.TryAdd(address, DateTime.Now);
+
+                    log.Info($"{address} - loaded");
+                }
+                else
+                    _others.Add(address);
+            }
+        }
+
+        public bool TryAdd(IPAddress ipAddress)
+        {
+            if (_ipRanges.Values.Any(r => r.Contains(ipAddress)))
+                return false;
+
+            var address = ipAddress.ToString();
+            if (!_ips.TryAdd(address, DateTime.Now))
+                return false;
+
+            log.Info($"{address} - added");
+
+            var addressesMaxCount = maxCount - _ipRanges.Count - _others.Count;
+            while (_ips.Count > addressesMaxCount)
+            {
+                var oldAddress = _ips.MinBy(x => x.Value).Key;
+                _ips.TryRemove(oldAddress, out _);
+                log.Info($"{oldAddress} - remove");
+            }
+
+            return true;
+        }
+
+        public IReadOnlyCollection<string> GetAll()
+        {
+            return _others
+                .Union(_ipRanges.Keys)
+                .Union(_ips.Keys)
+                .ToList();
+        }
+    }
+}
