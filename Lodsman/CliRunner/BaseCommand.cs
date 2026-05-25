@@ -46,7 +46,16 @@ internal abstract class BaseCommand : RootCommand, ICliRunAsyncWithReturn, IConf
 
     public abstract Task<IContext> BuildContextAsync(ILog log, CancellationToken cancellationToken);
 
-    protected abstract IReadOnlyCollection<string> GetServiceArguments();
+    protected virtual IEnumerable<string> GetServiceArguments()
+    {
+        foreach (var processName in ProcessNames)
+            yield return $"-pn \"{processName}\"";
+
+        yield return $"-sd {SavingDelay}";
+
+        if (ClearBeforeExit)
+            yield return "-cbe";
+    }
 
     private async Task<int> InstallServiceAsync(ILog log)
     {
@@ -57,12 +66,7 @@ internal abstract class BaseCommand : RootCommand, ICliRunAsyncWithReturn, IConf
             return 1;
         }
 
-        var serviceArguments = new List<string>(GetServiceArguments());
-        serviceArguments.AddRange(ProcessNames.Select(processName => $"-pn \"{processName}\""));
-        serviceArguments.Add($"-sd {SavingDelay}");
-        if (ClearBeforeExit) serviceArguments.Add("-cbe");
-
-        serviceArguments = serviceArguments.Select(x => x.Replace("\"", "\\\"")).ToList();
+        var serviceArguments = GetServiceArguments().Select(x => x.Replace("\"", "\\\"")).ToList();
         var installArguments = $"/c sc create \"{ServiceName}\" binPath= \"\\\"{servicePath}\\\" {string.Join(" ", serviceArguments)}\" start= auto";
         log.Info($"Install Service: \"{ServiceName}\"");
         var installResult = await ProcessHelper.ExecuteAsync("cmd", installArguments, log);

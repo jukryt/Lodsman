@@ -35,19 +35,18 @@ internal class KeeneticCommand : BaseCommand, IKeeneticConfig
         return new KeeneticContext(this, api, routes.ToArray(), log);
     }
 
-    protected override IReadOnlyCollection<string> GetServiceArguments()
+    protected override IEnumerable<string> GetServiceArguments()
     {
-        var arguments = new List<string>
-        {
-            "/keen",
-            $"-a \"{Address}\"",
-            $"-u \"{User}\"",
-            $"-p \"{Password}\"",
-        };
+        yield return "/keen";
+        yield return $"-a \"{Address}\"";
+        yield return $"-u \"{User}\"";
+        yield return $"-p \"{Password}\"";
 
-        arguments.AddRange(ListNames.Select(listName => $"-ln \"{listName}\""));
+        foreach (var listName in ListNames)
+            yield return $"-ln \"{listName}\"";
 
-        return arguments;
+        foreach (var argument in base.GetServiceArguments())
+            yield return argument;
     }
 
     private async Task<IReadOnlyCollection<DomainRoute>> RetryGetDomainRoutesAsync(KeeneticApi api, ILog log, CancellationToken cancellationToken)
