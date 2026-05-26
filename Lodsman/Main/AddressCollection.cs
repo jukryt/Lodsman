@@ -15,6 +15,10 @@ internal class AddressCollection(int maxCount, bool showAddressesOnLoad, ILog lo
 
     public void Init(IReadOnlyCollection<string> addresses)
     {
+        _ipRanges.Clear();
+        _ips.Clear();
+        _others.Clear();
+
         foreach (var address in addresses)
         {
             if (IPAddressRange.TryParse(address, out var ipAddressRange))
