@@ -60,6 +60,13 @@ A utility for monitoring the network activity of Windows processes and using the
             <td>delay before saving after adding a new address<br>default: 1000</td>
         </tr>
         <tr>
+            <td><kbd>-sal</kbd> or <kbd>--show-addresses-on-load</kbd></td>
+            <td></td>
+            <td>optional</td>
+            <td>only one</td>
+            <td>if there are any, the list of addresses will be displayed during the upload</td>
+        </tr>
+        <tr>
             <td><kbd>-cbe</kbd> or <kbd>--clear-before-exit</kbd></td>
             <td></td>
             <td>optional</td>
