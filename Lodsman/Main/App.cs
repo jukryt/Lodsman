@@ -20,7 +20,7 @@ internal class App
     public App(IContext context)
     {
         _context = context;
-        _addresses = new AddressCollection(context.MaxAddressCount, context.Log);
+        _addresses = new AddressCollection(context.MaxAddressCount, context.ShowAddressesOnLoad, context.Log);
         _saveAction = new AsyncActionThrottler<IReadOnlyCollection<string>>(context.SaveAsync, context.SavingDelay, SaveComplete, context.Log);
 
         var processNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

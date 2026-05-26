@@ -8,6 +8,7 @@ internal interface IContext : IAsyncDisposable
     IReadOnlyCollection<string> ProcessNames { get; }
     IReadOnlyCollection<string> Addresses { get; }
     TimeSpan SavingDelay { get; }
+    bool ShowAddressesOnLoad { get; }
     ILog Log { get; }
 
     Task SaveAsync(IReadOnlyCollection<string> addresses, CancellationToken cancellationToken);

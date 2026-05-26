@@ -26,6 +26,9 @@ internal abstract class BaseCommand : RootCommand, ICliRunAsyncWithReturn, IConf
     [CliOption(Alias = "-sd", Required = false, Arity = CliArgumentArity.ZeroOrOne, HelpName = "Milliseconds")]
     public uint SavingDelay { get; set; } = 1000;
 
+    [CliOption(Alias = "-sal", Required = false, Arity = CliArgumentArity.ZeroOrOne)]
+    public required bool ShowAddressesOnLoad { get; set; } = false;
+
     [CliOption(Alias = "-cbe", Required = false, Arity = CliArgumentArity.ZeroOrOne)]
     public required bool ClearBeforeExit { get; set; } = false;
 
@@ -52,6 +55,9 @@ internal abstract class BaseCommand : RootCommand, ICliRunAsyncWithReturn, IConf
             yield return $"-pn \"{processName}\"";
 
         yield return $"-sd {SavingDelay}";
+
+        if (ShowAddressesOnLoad)
+            yield return "-sal";
 
         if (ClearBeforeExit)
             yield return "-cbe";
