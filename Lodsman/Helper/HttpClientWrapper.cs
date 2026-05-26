@@ -1,6 +1,6 @@
 ﻿using Lodsman.Extension;
 
-namespace Lodsman;
+namespace Lodsman.Helper;
 
 internal class HttpClientWrapper(HttpClient client)
 {

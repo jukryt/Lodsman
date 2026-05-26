@@ -1,6 +1,6 @@
 ﻿using Lodsman.Log;
 
-namespace Lodsman;
+namespace Lodsman.Helper;
 
 internal class AsyncActionThrottler<T>(Func<T, CancellationToken, Task> action, TimeSpan throttlingTime, Action? actionComplete = null, ILog? log = null)
 {

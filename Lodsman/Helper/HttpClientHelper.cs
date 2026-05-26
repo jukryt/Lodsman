@@ -1,7 +1,6 @@
 ﻿using System.Net;
-using Lodsman.Main;
 
-namespace Lodsman;
+namespace Lodsman.Helper;
 
 internal static class HttpClientHelper
 {

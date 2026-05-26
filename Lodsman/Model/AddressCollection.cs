@@ -3,7 +3,7 @@ using System.Net;
 using Lodsman.Log;
 using NetTools;
 
-namespace Lodsman.Main;
+namespace Lodsman.Model;
 
 internal class AddressCollection(int maxCount, bool showAddressesOnLoad, ILog log)
 {
@@ -22,12 +22,10 @@ internal class AddressCollection(int maxCount, bool showAddressesOnLoad, ILog lo
         foreach (var address in addresses)
         {
             if (IPAddressRange.TryParse(address, out var ipAddressRange))
-            {
                 if (ipAddressRange.AddressCount > 1)
                     _ipRanges.TryAdd(address, ipAddressRange);
                 else
                     _ips.TryAdd(address, Stopwatch.GetTimestamp());
-            }
             else
                 _others.Add(address);
 

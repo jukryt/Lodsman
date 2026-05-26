@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
 using Lodsman.Log;
 
-namespace Lodsman;
+namespace Lodsman.Helper;
 
 internal class ProcessHelper
 {

@@ -3,9 +3,11 @@ using System.Net;
 using System.Reflection;
 using Lodsman.Context;
 using Lodsman.Extension;
+using Lodsman.Helper;
+using Lodsman.Model;
 using Lodsman.Network.MicrosoftTraceEvent;
 
-namespace Lodsman.Main;
+namespace Lodsman;
 
 internal class App
 {
