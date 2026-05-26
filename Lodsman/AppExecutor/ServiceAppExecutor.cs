@@ -3,7 +3,7 @@ using Lodsman.Log;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace Lodsman.Main;
+namespace Lodsman.AppExecutor;
 
 internal class ServiceAppExecutor : BackgroundService
 {

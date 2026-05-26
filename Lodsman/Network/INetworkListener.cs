@@ -2,5 +2,5 @@
 
 internal interface INetworkListener : IDisposable
 {
-    event EventHandler<ConnectionEventArgs>? Connection;
+    event EventHandler<IpSendEventArgs>? IpSend;
 }

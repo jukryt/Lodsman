@@ -41,16 +41,30 @@ A utility for monitoring the network activity of Windows processes and using the
             <td><kbd>-ln</kbd> or <kbd>--list-name</kbd></td>
             <td>dns route list name</td>
             <td>required</td>
-            <td>only one</td>
+            <td>one or more</td>
             <td>keenetic(netcraze) dns route list name</td>
         </tr>
         <tr>
-            <td rowspan=5></td>
+            <td rowspan=0></td>
             <td><kbd>-pn</kbd> or <kbd>--process-name</kbd></td>
             <td>process name</td>
             <td>required</td>
             <td>one or more</td>
             <td>windows process name</td>
+        </tr>
+        <tr>
+            <td><kbd>-sd</kbd> or <kbd>--saving-delay</kbd></td>
+            <td>milliseconds</td>
+            <td>optional</td>
+            <td>only one</td>
+            <td>delay before saving after adding a new address<br>default: 1000</td>
+        </tr>
+        <tr>
+            <td><kbd>-sal</kbd> or <kbd>--show-addresses-on-load</kbd></td>
+            <td></td>
+            <td>optional</td>
+            <td>only one</td>
+            <td>if there are any, the list of addresses will be displayed during the upload</td>
         </tr>
         <tr>
             <td><kbd>-cbe</kbd> or <kbd>--clear-before-exit</kbd></td>
@@ -84,9 +98,9 @@ A utility for monitoring the network activity of Windows processes and using the
 </table>
 
 ## Usage
-Monitor `process_name_1` and `process_name_2` and send all IP addresses they accessed to `list_name` on the keenetic(netcraze) router:
+Monitor `process_name_1` and `process_name_2` and send all IP addresses they accessed to `list_name_1` and `list_name_2` on the keenetic(netcraze) router:
 ```
-Lodsman.exe /keen -a 192.168.1.1 -u <user> -p <password> -ln <list_name> -pn <process_name_1> -pn <process_name_2>
+Lodsman.exe /keen -a 192.168.1.1 -u <user> -p <password> -ln <list_name_1> -ln <list_name_2> -pn <process_name_1> -pn <process_name_2>
 ```
 Install and run service for monitor `process_name` and send all IP addresses they accessed to `list_name` on the keenetic(netcraze) router:
 ```

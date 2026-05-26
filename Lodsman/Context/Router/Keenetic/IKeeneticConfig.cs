@@ -5,5 +5,5 @@ internal interface IKeeneticConfig : IConfig
     string Address { get; }
     string User { get; }
     string Password { get; }
-    string ListName { get; }
+    List<string> ListNames { get; }
 }

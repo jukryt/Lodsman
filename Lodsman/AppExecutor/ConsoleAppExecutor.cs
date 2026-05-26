@@ -1,7 +1,7 @@
 ﻿using Lodsman.Context;
 using Lodsman.Log;
 
-namespace Lodsman.Main;
+namespace Lodsman.AppExecutor;
 
 internal class ConsoleAppExecutor
 {

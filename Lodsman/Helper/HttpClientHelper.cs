@@ -1,11 +1,11 @@
 ﻿using System.Net;
-using Lodsman.Main;
 
-namespace Lodsman;
+namespace Lodsman.Helper;
 
 internal static class HttpClientHelper
 {
-    public static HttpClient Instance { get; } = Create();
+    private static HttpClient Instance { get; } = Create();
+    public static HttpClientWrapper Wrapper { get; } = new HttpClientWrapper(Instance);
 
     private static HttpClient Create()
     {
