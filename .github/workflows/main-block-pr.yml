@@ -1,0 +1,22 @@
+name: Auto close PR to main
+
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  close_pr:
+    if: github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Close Pull Request
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} --body "This pull request was automatically closed because merging into the `${{ github.base_ref }}` branch is not allowed."
+          gh pr close ${{ github.event.pull_request.number }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
