@@ -4,8 +4,7 @@ namespace Lodsman.Context;
 
 internal interface IConfig
 {
-    bool IsService { get; }
-    string ServiceName { get; }
+    string Name { get; }
     List<string> ProcessNames { get; }
     uint SavingDelay { get; }
     bool ShowAddressesOnLoad { get; }

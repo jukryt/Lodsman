@@ -1,7 +1,9 @@
-﻿using DotMake.CommandLine;
+﻿using System.Text.Json.Serialization;
+using DotMake.CommandLine;
 using Lodsman.Context;
 using Lodsman.Context.Router.Keenetic;
 using Lodsman.Helper;
+using Lodsman.Json;
 using Lodsman.Log;
 
 namespace Lodsman.CliRunner;
@@ -12,7 +14,8 @@ namespace Lodsman.CliRunner;
     ShortFormPrefixConvention = CliNamePrefixConvention.SingleHyphen,
     NameCasingConvention = CliNameCasingConvention.KebabCase,
     TreatUnmatchedTokensAsErrors = false)]
-internal class KeeneticCommand : BaseCommand, IKeeneticConfig
+[JsonBaseType(BaseType = typeof(AppRunCommand), TypeDiscriminator = "keenetic")]
+internal class KeeneticCommand : AppRunCommand, IKeeneticConfig
 {
     [CliOption(Alias = "-a", Required = true, Arity = CliArgumentArity.ExactlyOne, HelpName = "ip address")]
     public required string Address { get; set; }
@@ -26,6 +29,7 @@ internal class KeeneticCommand : BaseCommand, IKeeneticConfig
     [CliOption(Alias = "-ln", Required = true, Arity = CliArgumentArity.OneOrMore, HelpName = "dns route list name")]
     public required List<string> ListName { get; set; }
 
+    [JsonIgnore]
     public List<string> ListNames => ListName;
 
     public override async Task<IContext> BuildContextAsync(ILog log, CancellationToken cancellationToken)
