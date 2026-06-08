@@ -5,10 +5,10 @@ namespace Lodsman.AppExecutor;
 
 internal class ConsoleAppExecutor
 {
-    public static async Task<int> ExecuteAsync(IConfig config, ILog log)
+    public static async Task ExecuteAsync(IConfig config, ILog log)
     {
-        Console.Title = config.ServiceName;
-        return await new ConsoleAppExecutor(config, log).ExecuteAsync();
+        Console.Title = config.Name;
+        await new ConsoleAppExecutor(config, log).ExecuteAsync();
     }
 
     private readonly IConfig _config;
@@ -23,23 +23,13 @@ internal class ConsoleAppExecutor
         _log = log;
     }
 
-    private async Task<int> ExecuteAsync()
+    private async Task ExecuteAsync()
     {
         try
         {
             var appExecutor = new AppExecutor(_config, _log);
             AppDomain.CurrentDomain.ProcessExit += ProcessExit;
             await appExecutor.ExecuteAsync(_cancellationTokenSource.Token);
-            return 0;
-        }
-        catch (OperationCanceledException)
-        {
-            return 0;
-        }
-        catch (Exception ex)
-        {
-            _log.Error(ex);
-            return ex.HResult;
         }
         finally
         {

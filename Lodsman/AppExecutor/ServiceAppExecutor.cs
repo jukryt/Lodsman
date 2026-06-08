@@ -15,7 +15,7 @@ internal class ServiceAppExecutor : BackgroundService
             o.StartupTimeout = TimeSpan.FromSeconds(30);
             o.ShutdownTimeout = TimeSpan.FromSeconds(30);
         });
-        builder.Services.AddWindowsService(o => o.ServiceName = config.ServiceName);
+        builder.Services.AddWindowsService(o => o.ServiceName = config.Name);
         builder.Services.AddHostedService(_ => new ServiceAppExecutor(config, log));
 
         var host = builder.Build();
@@ -33,18 +33,7 @@ internal class ServiceAppExecutor : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        try
-        {
-            var appExecutor = new AppExecutor(_config, _log);
-            await appExecutor.ExecuteAsync(stoppingToken);
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (Exception ex)
-        {
-            _log.Error(ex);
-            Environment.Exit(ex.HResult);
-        }
+        var appExecutor = new AppExecutor(_config, _log);
+        await appExecutor.ExecuteAsync(stoppingToken);
     }
 }
