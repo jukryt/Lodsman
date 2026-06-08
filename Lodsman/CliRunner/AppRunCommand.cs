@@ -9,7 +9,8 @@ namespace Lodsman.CliRunner;
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 internal abstract class AppRunCommand : BaseCommand, IConfig
 {
-    [JsonIgnore]
+    [CliOption(Alias = "-n", Required = false, Arity = CliArgumentArity.ZeroOrOne, HelpName = "name", Order = -1)]
+    [JsonPropertyOrder(-1)]
     public override string Name { get; set; } = string.Empty;
 
     [CliOption(Alias = "-pn", Required = true, Arity = CliArgumentArity.OneOrMore, HelpName = "process name")]
@@ -33,7 +34,9 @@ internal abstract class AppRunCommand : BaseCommand, IConfig
 
     public override Task InitAsync(ILog log)
     {
-        Name = $"{App.Name} - {string.Join(", ", ProcessNames.Order().ToHashSet(StringComparer.OrdinalIgnoreCase))}";
+        if (string.IsNullOrEmpty(Name))
+            Name = $"{App.Name} - {string.Join(", ", ProcessNames.Order().ToHashSet(StringComparer.OrdinalIgnoreCase))}";
+
         return Task.CompletedTask;
     }
 
