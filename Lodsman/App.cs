@@ -23,12 +23,8 @@ internal class App
     {
         _context = context;
         _addresses = new AddressCollection(context.MaxAddressCount, context.ShowAddressesOnLoad, context.Log);
+        _processNames = new ReadOnlySet<string>(new HashSet<string>(context.ProcessNames, StringComparer.OrdinalIgnoreCase));
         _saveAction = new AsyncActionThrottler<IReadOnlyCollection<string>>(context.SaveAsync, context.SavingDelay, context.Log);
-
-        var processNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var processName in _context.ProcessNames)
-            processNames.Add(processName);
-        _processNames = new ReadOnlySet<string>(processNames);
 
         _saveAction.Complete += SaveComplete;
     }
