@@ -29,6 +29,9 @@ internal class KeeneticCommand : AppRunCommand, IKeeneticConfig
     [CliOption(Alias = "-ln", Required = true, Arity = CliArgumentArity.OneOrMore, HelpName = "dns route list name")]
     public required List<string> ListName { get; set; }
 
+    [CliOption(Alias = "-ac", Required = false, Arity = CliArgumentArity.ZeroOrOne)]
+    public bool AutoCollapse { get; set; } = false;
+
     [JsonIgnore]
     public List<string> ListNames => ListName;
 
@@ -49,6 +52,9 @@ internal class KeeneticCommand : AppRunCommand, IKeeneticConfig
 
         foreach (var listName in ListNames)
             yield return $"-ln \"{listName}\"";
+
+        if (AutoCollapse)
+            yield return "-ac";
 
         foreach (var argument in base.GetServiceArguments())
             yield return argument;

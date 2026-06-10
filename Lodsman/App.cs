@@ -16,22 +16,33 @@ internal class App
 
     private readonly IContext _context;
     private readonly ReadOnlySet<string> _processNames;
-    private readonly AddressCollection _addresses;
+    private readonly IAddressCollection _addresses;
     private readonly AsyncActionThrottler<IReadOnlyCollection<string>> _saveAction;
 
     public App(IContext context)
     {
         _context = context;
-        _addresses = new AddressCollection(context.MaxAddressCount, context.ShowAddressesOnLoad, context.Log);
         _processNames = new ReadOnlySet<string>(new HashSet<string>(context.ProcessNames, StringComparer.OrdinalIgnoreCase));
+        _addresses = context.CreateAddressCollection();
         _saveAction = new AsyncActionThrottler<IReadOnlyCollection<string>>(context.SaveAsync, context.SavingDelay, context.Log);
 
+        _addresses.AddressLoad += AddressLoad;
+        _addresses.AddressAdded += AddressAdded;
+        _addresses.AddressRemove += AddressRemove;
+        _addresses.AddressMerge += AddressMerge;
         _saveAction.Complete += SaveComplete;
     }
 
     public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        _addresses.Init(_context.Addresses);
+        var changed = _addresses.Init(_context.Addresses);
+        _context.Log.Info($"Total addresses: {_addresses.Count}. Maximum: {_addresses.MaxCount}");
+
+        if (changed)
+        {
+            var addresses = _addresses.GetOrdered();
+            _saveAction.Run(addresses, cancellationToken);
+        }
 
         using var listener = TraceEventListener.Start();
         listener.IpSend += (_, e) => IpSendHandler(e.ProcessName, e.TargetIp, cancellationToken);
@@ -60,8 +71,29 @@ internal class App
         if (!_addresses.TryAdd(targetIp))
             return;
 
-        var addresses = _addresses.GetAll();
+        var addresses = _addresses.GetOrdered();
         _saveAction.Run(addresses, cancellationToken);
+    }
+
+    private void AddressLoad(object? sender, AddressEventArgs e)
+    {
+        if (_context.ShowAddressesOnLoad)
+            _context.Log.Info($"{e.Address} - loaded");
+    }
+
+    private void AddressAdded(object? sender, AddressEventArgs e)
+    {
+        _context.Log.Info($"{e.Address} - added");
+    }
+
+    private void AddressRemove(object? sender, AddressEventArgs e)
+    {
+        _context.Log.Info($"{e.Address} - remove");
+    }
+
+    private void AddressMerge(object? sender, MergeEventArgs e)
+    {
+        _context.Log.Info($"{e.TargetAddress} - merge from: {string.Join(", ", e.SourceAddresses)}");
     }
 
     private void SaveComplete(object? sender, EventArgs e)

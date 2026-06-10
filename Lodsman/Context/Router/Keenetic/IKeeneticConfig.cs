@@ -6,4 +6,5 @@ internal interface IKeeneticConfig : IConfig
     string User { get; }
     string Password { get; }
     List<string> ListNames { get; }
+    bool AutoCollapse { get; }
 }

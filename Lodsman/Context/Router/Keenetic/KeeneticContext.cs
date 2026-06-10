@@ -1,5 +1,6 @@
 ﻿using Lodsman.Helper;
 using Lodsman.Log;
+using Lodsman.Model;
 
 namespace Lodsman.Context.Router.Keenetic;
 
@@ -8,6 +9,7 @@ internal class KeeneticContext : BaseContext
     private readonly IKeeneticConfig _config;
     private readonly KeeneticApi _keeneticApi;
     private readonly DomainRoute[] _routes;
+    private readonly int _maxAddressCount;
     private readonly CancellationTokenSource _cancellationTokenSource = new();
 
     public KeeneticContext(IKeeneticConfig config, KeeneticApi keeneticApi, DomainRoute[] routes, ILog log) : base(config, log)
@@ -15,12 +17,14 @@ internal class KeeneticContext : BaseContext
         _config = config;
         _keeneticApi = keeneticApi;
         _routes = routes;
+        _maxAddressCount = KeeneticApi.MaxDomainRoutes * routes.Length;
 
         AliveKeepingStart(_cancellationTokenSource.Token);
     }
 
-    public override int MaxAddressCount => KeeneticApi.MaxDomainRoutes * _routes.Length;
     public override IReadOnlyCollection<string> Addresses => _routes.SelectMany(x => x.Addresses).ToList();
+
+    public override IAddressCollection CreateAddressCollection() => new CidrIpSetCollection(_maxAddressCount, _config.AutoCollapse);
 
     public override async Task SaveAsync(IReadOnlyCollection<string> addresses, CancellationToken cancellationToken)
     {
