@@ -2,10 +2,12 @@
 
 namespace Lodsman.Helper;
 
-internal class AsyncActionThrottler<T>(Func<T, CancellationToken, Task> action, TimeSpan throttlingTime, Action? actionComplete = null, ILog? log = null)
+internal class AsyncActionThrottler<T>(Func<T, CancellationToken, Task> action, TimeSpan throttlingTime, ILog? log = null)
 {
     private bool _isRunning = false;
     private ulong _counter = 0;
+
+    public event EventHandler? Complete;
 
     public void Run(T data, CancellationToken cancellationToken = default)
     {
@@ -38,7 +40,7 @@ internal class AsyncActionThrottler<T>(Func<T, CancellationToken, Task> action, 
             await action(data, cancellationToken);
 
             if (Interlocked.Read(ref _counter) == counter)
-                actionComplete?.Invoke();
+                OnComplete();
         }
         catch (OperationCanceledException)
         {
@@ -51,5 +53,10 @@ internal class AsyncActionThrottler<T>(Func<T, CancellationToken, Task> action, 
         {
             Interlocked.Exchange(ref _isRunning, false);
         }
+    }
+
+    protected virtual void OnComplete()
+    {
+        Complete?.Invoke(this, EventArgs.Empty);
     }
 }
