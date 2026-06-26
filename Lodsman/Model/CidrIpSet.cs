@@ -61,11 +61,13 @@ internal class CidrIpSet
     public UInt128 MergeId { get; }
 
     public bool Contains(IPAddress ipAddress) => _range.Contains(ipAddress);
+    public bool Contains(CidrIpSet ipSet) => _range.Contains(ipSet._range);
     public override int GetHashCode() => _range.GetHashCode();
     public override bool Equals(object? obj) => _range.Equals(obj);
+    public override string ToString() => Address;
 }
 
-internal class CidrIpSetComparer : IComparer<CidrIpSet>
+internal class CidrIpSetComparer : IComparer<CidrIpSet>, IEqualityComparer<CidrIpSet>
 {
     public int Compare(CidrIpSet? x, CidrIpSet? y)
     {
@@ -91,6 +93,22 @@ internal class CidrIpSetComparer : IComparer<CidrIpSet>
                 return xBytes[i].CompareTo(yBytes[i]);
         }
 
-        return 0;
+        return x.Prefix.CompareTo(y.Prefix);
+    }
+
+    public bool Equals(CidrIpSet? x, CidrIpSet? y)
+    {
+        return x switch
+        {
+            null when y == null => true,
+            not null when y == null => false,
+            null => false,
+            _ => x.Equals(y)
+        };
+    }
+
+    public int GetHashCode(CidrIpSet obj)
+    {
+        return obj.GetHashCode();
     }
 }

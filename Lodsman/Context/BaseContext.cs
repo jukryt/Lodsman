@@ -12,8 +12,8 @@ internal abstract class BaseContext(IConfig config, ILog log) : IContext
     public ILog Log { get; } = log;
 
     public abstract IAddressCollection CreateAddressCollection();
-    public abstract Task SaveAsync(IReadOnlyCollection<string> addresses, CancellationToken cancellationToken);
-    public abstract Task ShutdownAsync();
+    public abstract Task SaveAsync(IReadOnlyCollection<string> addresses, CancellationToken cancellationToken = default);
+    public abstract Task ShutdownAsync(IReadOnlyCollection<string> addresses);
 
     public virtual ValueTask DisposeAsync()
     {

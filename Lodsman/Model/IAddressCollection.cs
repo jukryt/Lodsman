@@ -12,7 +12,8 @@ internal interface IAddressCollection
     event EventHandler<AddressEventArgs>? AddressRemove;
     event EventHandler<MergeEventArgs>? AddressMerge;
 
-    bool Init(IReadOnlyCollection<string> addresses);
+    bool Init(IEnumerable<string> addresses);
     bool TryAdd(IPAddress ipAddress);
+    IReadOnlyCollection<string> GetAll();
     IReadOnlyCollection<string> GetOrdered();
 }

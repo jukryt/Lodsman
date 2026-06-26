@@ -12,8 +12,9 @@ internal abstract class BaseAddressCollection : IAddressCollection
     public event EventHandler<AddressEventArgs>? AddressRemove;
     public event EventHandler<MergeEventArgs>? AddressMerge;
 
-    public abstract bool Init(IReadOnlyCollection<string> addresses);
+    public abstract bool Init(IEnumerable<string> addresses);
     public abstract bool TryAdd(IPAddress ipAddress);
+    public abstract IReadOnlyCollection<string> GetAll();
     public abstract IReadOnlyCollection<string> GetOrdered();
 
     protected void OnAddressLoad(string address) => AddressLoad?.Invoke(this, new AddressEventArgs(address));

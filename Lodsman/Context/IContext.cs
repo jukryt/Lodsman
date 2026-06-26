@@ -12,6 +12,6 @@ internal interface IContext : IAsyncDisposable
     ILog Log { get; }
 
     IAddressCollection CreateAddressCollection();
-    Task SaveAsync(IReadOnlyCollection<string> addresses, CancellationToken cancellationToken);
-    Task ShutdownAsync();
+    Task SaveAsync(IReadOnlyCollection<string> addresses, CancellationToken cancellationToken = default);
+    Task ShutdownAsync(IReadOnlyCollection<string> addresses);
 }

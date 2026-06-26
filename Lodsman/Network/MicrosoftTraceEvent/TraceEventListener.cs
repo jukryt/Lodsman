@@ -55,6 +55,9 @@ internal class TraceEventListener : INetworkListener
 
     protected virtual void OnIpSend(string processName, IPAddress targetIp)
     {
+        if (string.IsNullOrEmpty(processName))
+            return;
+
         IpSend?.Invoke(this, new IpSendEventArgs(processName, targetIp));
     }
 

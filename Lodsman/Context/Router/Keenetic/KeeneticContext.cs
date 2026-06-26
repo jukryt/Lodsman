@@ -26,7 +26,7 @@ internal class KeeneticContext : BaseContext
 
     public override IAddressCollection CreateAddressCollection() => new CidrIpSetCollection(_maxAddressCount, _config.AutoCollapse);
 
-    public override async Task SaveAsync(IReadOnlyCollection<string> addresses, CancellationToken cancellationToken)
+    public override async Task SaveAsync(IReadOnlyCollection<string> addresses, CancellationToken cancellationToken = default)
     {
         var itemIndex = 0;
         var addressesChunks = addresses
@@ -60,16 +60,12 @@ internal class KeeneticContext : BaseContext
         }
     }
 
-    public override async Task ShutdownAsync()
+    public override async Task ShutdownAsync(IReadOnlyCollection<string> addresses)
     {
         if (_config.ClearBeforeExit)
-        {
-            foreach (var domainRoute in _routes)
-            {
-                domainRoute.Addresses.Clear();
-                await _keeneticApi.SaveDomainRouteAsync(domainRoute);
-            }
-        }
+            await SaveAsync([]);
+        else
+            await SaveAsync(addresses);
     }
 
     private async void AliveKeepingStart(CancellationToken cancellationToken)

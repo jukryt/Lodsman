@@ -35,12 +35,12 @@ internal class App
 
     public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        var changed = _addresses.Init(_context.Addresses);
+        var isChanged = _addresses.Init(_context.Addresses);
         _context.Log.Info($"Total addresses: {_addresses.Count}. Maximum: {_addresses.MaxCount}");
 
-        if (changed)
+        if (isChanged)
         {
-            var addresses = _addresses.GetOrdered();
+            var addresses = _addresses.GetAll();
             _saveAction.Run(addresses, cancellationToken);
         }
 
@@ -53,7 +53,8 @@ internal class App
 
     public async Task ShutdownAsync()
     {
-        await _context.ShutdownAsync();
+        var addresses = _addresses.GetOrdered();
+        await _context.ShutdownAsync(addresses);
     }
 
     private void IpSendHandler(string processName, IPAddress targetIp, CancellationToken cancellationToken)
@@ -61,8 +62,7 @@ internal class App
         if (cancellationToken.IsCancellationRequested)
             return;
 
-        if (string.IsNullOrEmpty(processName) ||
-            !_processNames.Contains(processName))
+        if (!_processNames.Contains(processName))
             return;
 
         if (IPAddress.IsLoopback(targetIp))
@@ -71,7 +71,7 @@ internal class App
         if (!_addresses.TryAdd(targetIp))
             return;
 
-        var addresses = _addresses.GetOrdered();
+        var addresses = _addresses.GetAll();
         _saveAction.Run(addresses, cancellationToken);
     }
 

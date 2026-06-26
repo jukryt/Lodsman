@@ -6,27 +6,32 @@ namespace Lodsman.Model;
 internal class CidrIpSetCollection(int maxCount = int.MaxValue, bool autoCollapse = false) : BaseAddressCollection
 {
     private readonly SortedList<CidrIpSet, long> _ipSets = new(new CidrIpSetComparer());
-    private readonly HashSet<string> _others = new(StringComparer.Ordinal);
+    private readonly LinkedHashSet<string> _addresses = new(StringComparer.Ordinal);
 
-    public override int Count => _ipSets.Count + _others.Count;
+    public override int Count => _addresses.Count;
     public override int MaxCount => maxCount;
 
-    public override bool Init(IReadOnlyCollection<string> addresses)
+    public override bool Init(IEnumerable<string> addresses)
     {
         _ipSets.Clear();
-        _others.Clear();
+        _addresses.Clear();
 
         foreach (var address in addresses)
         {
-            var isLoaded = CidrIpSet.TryParse(address, out var ipSet)
-                ? _ipSets.TryAdd(ipSet, Stopwatch.GetTimestamp())
-                : _others.Add(address);
-
-            if (isLoaded)
+            if (CidrIpSet.TryParse(address, out var ipSet) &&
+                _ipSets.TryAdd(ipSet, Stopwatch.GetTimestamp()))
+            {
+                _addresses.Add(ipSet.Address);
                 OnAddressLoad(address);
+            }
+            else
+                _addresses.Add(address);
         }
 
-        return autoCollapse && Collapse();
+        var isFiltered = Filter();
+        var isCollapsed = autoCollapse && Collapse();
+
+        return isFiltered || isCollapsed;
     }
 
     public override bool TryAdd(IPAddress ipAddress)
@@ -40,35 +45,78 @@ internal class CidrIpSetCollection(int maxCount = int.MaxValue, bool autoCollaps
             return false;
         }
 
-        if (!_ipSets.TryAdd(new CidrIpSet(ipAddress), Stopwatch.GetTimestamp()))
+        var newIpSet = new CidrIpSet(ipAddress);
+        if (!_ipSets.TryAdd(newIpSet, Stopwatch.GetTimestamp()))
             return false;
+
+        _addresses.Add(newIpSet.Address);
 
         OnAddressAdded(ipAddress.ToString());
 
         if (autoCollapse)
             Collapse();
 
-        var ipSetMaxCount = maxCount - _others.Count;
-        while (_ipSets.Count > ipSetMaxCount)
+        while (_addresses.Count > maxCount)
         {
             var oldIpSet = _ipSets.MinBy(x => x.Value).Key;
             _ipSets.Remove(oldIpSet, out _);
+            _addresses.Remove(oldIpSet.Address);
             OnAddressRemove(oldIpSet.Address);
         }
 
         return true;
     }
 
+    public override IReadOnlyCollection<string> GetAll()
+    {
+        return _addresses.ToList();
+    }
+
     public override IReadOnlyCollection<string> GetOrdered()
     {
-        return _others
-            .Union(_ipSets.OrderBy(x => x.Value).Select(x => x.Key.Address))
+        var addresses = _ipSets
+            .OrderBy(x => x.Value)
+            .Select(x => x.Key.Address)
             .ToList();
+
+        return _addresses.Except(addresses)
+            .Union(addresses)
+            .ToList();
+    }
+
+    private bool Filter()
+    {
+        var isChanged = false;
+
+        for (var i = 0; i < _ipSets.Count; i++)
+        {
+            var current = _ipSets.Keys[i];
+            for (var j = 0; j < _ipSets.Count; j++)
+            {
+                if (i == j)
+                    continue;
+
+                var challenger = _ipSets.Keys[j];
+                if (!current.Contains(challenger))
+                    continue;
+
+                _ipSets.Remove(challenger);
+                _addresses.Remove(challenger.Address);
+                isChanged = true;
+
+                if (j < i) i--;
+                j--;
+
+                OnAddressRemove(challenger.Address);
+            }
+        }
+
+        return isChanged;
     }
 
     private bool Collapse()
     {
-        var changed = false;
+        var isChanged = false;
 
         for (var i = 1; i < _ipSets.Count; i++)
         {
@@ -88,14 +136,25 @@ internal class CidrIpSetCollection(int maxCount = int.MaxValue, bool autoCollaps
 
             _ipSets.Remove(current);
             _ipSets.Remove(next);
-            _ipSets.Add(merged, Stopwatch.GetTimestamp());
-            changed = true;
+            _addresses.Remove(next.Address);
 
+            if (_ipSets.ContainsKey(merged))
+            {
+                _ipSets[merged] = Stopwatch.GetTimestamp();
+                _addresses.Remove(current.Address);
+            }
+            else
+            {
+                _ipSets.Add(merged, Stopwatch.GetTimestamp());
+                _addresses.Replace(current.Address, merged.Address);
+            }
+
+            isChanged = true;
             i -= Math.Min(i, 2);
 
             OnAddressMerge([current.Address, next.Address], merged.Address);
         }
 
-        return changed;
+        return isChanged;
     }
 }
